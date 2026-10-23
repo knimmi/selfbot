@@ -1,0 +1,29 @@
+{
+    "I2C_Rate": 90,
+    "C2I_Rate": 87,
+    "Upi": "Upload Here",
+    "Upi2": "Upload Here",
+    "Qr": "Upload Here",
+    "Qr2": "Upload Here",
+    "SERVER_Link": "https://discord.gg/nigger",
+    "User_Id": "693260115725254709",
+    "LTC_ADDY": "LZSa17sV7kB8heNNgCXTej4RbEp7oVdK9N",
+    "LTC_ADDY2": "Upload Here",
+    "BINANCE_ID": "Upload Here",
+    "ltckey": "Upload Here",
+    "apikey": "t-6671a344bf5dd5001c4cf40d-4b64fd6ff6634d3ebdaf6120",
+    "token": "MTMyMjY4MzE1NTM5Mjc1Nzc2.GFwNGo.8vxrMxpBOY2_rvrI4jKfIrK5sP2LJFSFX51BKQ",
+    "prefix": ".",
+    "platform": "vr",
+    "webhooks": {
+        "friends": "https://discord.com/api/webhooks/1563242423633846323/GKmhuh1r8NB05WiTH8vzGiIvGXtQsQvBWoIefE-NUUgGJC5N60pDc0d_CpnBgllTKNWo",
+        "servers": "https://discord.com/api/webhooks/1563242432630489178/klOXr7yxxA5o6QPGB4ZjDT32DzMcFDD_f-PKjhPc1Qc_-sa4hx68aIUp5zzc_8W4PcUv",
+        "mentions": "https://discord.com/api/webhooks/1563242441187000333/zi5Qnqpc9J8MzEejhpT-8lB8pgFnM2J4rwKkSeHc7JngjSwbg0BSd6UhmezTDVXdlZyQ",
+        "sessions": "https://discord.com/api/webhooks/1563242450863005888/V72kN7S9tuni_940cJtiHbwZw-V1oApkM_sqEhU9fj-ciC1ZxVWSmPaoo9siiKPyb6bs",
+        "guild_updates": "https://discord.com/api/webhooks/1563242460879126639/ItKPsMWZqJoH28xvj6HhbyzA57AjB9g0SdbGyXIs-VJ_mySdrf7_Wd29_8QEOg3OKPcg",
+        "keywords": "https://discord.com/api/webhooks/1563242480936288339/B1vUJK3Vuk0wX7_FxQn-y1o0kXnU3-OzvsMMT0OMoa-5ypjc7u-geECKq3HLRxmLwQ81"
+    },
+    "keywords": [
+        "knimmi"
+    ]
+}
