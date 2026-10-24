@@ -114,6 +114,21 @@ class Config(commands.Cog):
             json.dump(self.bot.config, f, indent=4)
             
         await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Dashboard Credentials updated.**")
+    @commands.command()
+    async def setspclient(self, ctx, *, new_val: str):
+        """Sets the Spotify Client ID."""
+        try: await ctx.message.delete()
+        except: pass
+        self.update_config("spotify_client_id", new_val.strip())
+        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Spotify Client ID updated.**")
 
+    @commands.command()
+    async def setspsecret(self, ctx, *, new_val: str):
+        """Sets the Spotify Client Secret."""
+        try: await ctx.message.delete()
+        except: pass
+        self.update_config("spotify_client_secret", new_val.strip())
+        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Spotify Client Secret updated.**")
+        
 async def setup(bot):
     await bot.add_cog(Config(bot))
