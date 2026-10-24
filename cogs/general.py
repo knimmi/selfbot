@@ -29,7 +29,10 @@ class General(commands.Cog):
 > {e.get('general', '')} **GENERAL SECTION** :- `.help gnrl`
 > {e.get('config', '')} **CONFIG SECTION** :- `.help config`
 > {e.get('crypto', '')} **CRYPTO SECTION** :- `.help crypto`
+> {e.get('spotify', '')} **SPOTIFY SECTION** :- `.help spotify`
+> {e.get('remind', '')} **REMINDERS SECTION** :- `.help reminders`
 > {e.get('message', '')} **MESSAGE SECTION** :- `.help msg`
+> {e.get('ticket', '')} **TICKET SECTION** :- `.help ticket`
 > {e.get('status', '')} **STATUS SECTION** :- `.help status`
 > {e.get('calc', '')} **CALCULATE SECTION** :- `.help calc`
 > {e.get('auto', '')} **AUTO MSG SECTION** :- `.help auto`
@@ -54,6 +57,7 @@ class General(commands.Cog):
 {e.get('config', '')} **Set LTC Addy** :- `.setaddy <ltc_addy>`
 {e.get('config', '')} **Set LTC Addy 2** :- `.setaddy2 <ltc_addy>`
 {e.get('config', '')} **Set LTC Key** :- `.setltckey <ltc_key>`
+{e.get('config', '')} **Set Dashboard Creds** :- `.setdashcreds <user> <pass>`
 {e.get('config', '')} **Customise Emoji** :- `.emoji <name> <emoji>`
 {e.get('config', '')} **Toggle Risk Mode** :- `.risk`"""
         elif "gnrl" in cat:
@@ -65,6 +69,25 @@ class General(commands.Cog):
 {e.get('general', '')} **User Info** :- `.user_info [user_id/@user]`
 {e.get('general', '')} **YouTube Search** :- `.ytsearch <title>`
 {e.get('general', '')} **(Risk) Abuse** :- `.abuser [user_id/@user]`"""
+        elif "spotify" in cat:
+            desc = f"""{e.get('crown', '')} **Spotify Section** {e.get('crown', '')}
+{e.get('spotify', '')} **Now Playing** :- `.np` (or `.spotify`)
+{e.get('spotify', '')} **Skip Track** :- `.skip`
+{e.get('spotify', '')} **Pause Playback** :- `.pause`
+{e.get('spotify', '')} **Resume Playback** :- `.resume` (or `.play`)
+{e.get('spotify', '')} **Top Tracks** :- `.tt`
+{e.get('spotify', '')} **Track Lyrics** :- `.lyrics`
+{e.get('spotify', '')} **Setup Auth URL** :- `.spsetup`
+{e.get('spotify', '')} **Complete Auth** :- `.spauth <url>`"""
+        elif "reminders" in cat or "remind" in cat:
+            desc = f"""{e.get('crown', '')} **Reminders Section** {e.get('crown', '')}
+{e.get('remind', '')} **Set Reminder** :- `.remind <duration> <message>`
+{e.get('remind', '')} **List Reminders** :- `.reminders`
+{e.get('remind', '')} **Delete Reminder** :- `.delreminder <id>`"""
+        elif "ticket" in cat:
+            desc = f"""{e.get('crown', '')} **Ticket Section** {e.get('crown', '')}
+{e.get('ticket', '')} **Create Ticket** :- `.sc <category_id> <message>`
+{e.get('ticket', '')} **Close Ticket** :- `.stopsc <channel_id>`"""
         elif "crypto" in cat:
             desc = f"""{e.get('crown', '')} **Crypto Section** {e.get('crown', '')}
 {e.get('ltc', '')} **Send LTC** :- `.send <addy> <amount>`
@@ -227,7 +250,7 @@ class General(commands.Cog):
     async def allcmds(self, ctx):
         try: await ctx.message.delete()
         except: pass
-        categories = ['.help config', '.help gnrl', '.help crypto', '.help vouch', '.help msg', 
+        categories = ['.help config', '.help gnrl', '.help crypto', '.help spotify', '.help reminders', '.help ticket', '.help vouch', '.help msg', 
                       '.help status', '.help calc', '.help auto', '.help mod', '.help afk', '.help checker', 
                       '.help image', '.help fun', '.help vc', '.help user', '.help nsfw', '.help log']
         for cat in categories:
