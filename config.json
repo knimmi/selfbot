@@ -19,7 +19,7 @@
     "auto_mod": {},
     "stalk": {},
     "spotify_client_id": "6f87dfdfc0a0420993a57aa6de4028bb",
-    "spotify_client_secret": "PASTE_CLIENT_SECRET_HERE",
+    "spotify_client_secret": "e4b34f87f4fb4076bc032c3665798fd7",
     "webhooks": {
         "friends": "https://discord.com/api/webhooks/1563242423633846323/GKmhuh1r8NB05WiTH8vzGiIvGXtQsQvBWoIefE-NUUgGJC5N60pDc0d_CpnBgllTKNWo",
         "servers": "https://discord.com/api/webhooks/1563242432630489178/klOXr7yxxA5o6QPGB4ZjDT32DzMcFDD_f-PKjhPc1Qc_-sa4hx68aIUp5zzc_8W4PcUv",
