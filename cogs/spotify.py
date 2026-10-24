@@ -90,7 +90,7 @@ class Spotify(commands.Cog):
         except Exception as e:
             await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **Spotify Error:** {e}")
 
-    @commands.command(aliases=["play"])
+    @commands.command(aliases=["splay"])
     async def resume(self, ctx):
         try: await ctx.message.delete()
         except: pass
