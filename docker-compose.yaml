@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  ballzbot:
+    build: .
+    container_name: ballzbot
+    restart: unless-stopped
+    volumes:
+      - .:/app
+    ports:
+      - "127.0.0.1:8080:8080"
+    networks:
+      - bot_network
+
+networks:
+  bot_network:
+    driver: bridge

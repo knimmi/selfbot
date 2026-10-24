@@ -18,6 +18,8 @@
     "auto_slash": {},
     "auto_mod": {},
     "stalk": {},
+    "spotify_client_id": "PASTE_CLIENT_ID_HERE",
+    "spotify_client_secret": "PASTE_CLIENT_SECRET_HERE",
     "webhooks": {
         "friends": "https://discord.com/api/webhooks/1563242423633846323/GKmhuh1r8NB05WiTH8vzGiIvGXtQsQvBWoIefE-NUUgGJC5N60pDc0d_CpnBgllTKNWo",
         "servers": "https://discord.com/api/webhooks/1563242432630489178/klOXr7yxxA5o6QPGB4ZjDT32DzMcFDD_f-PKjhPc1Qc_-sa4hx68aIUp5zzc_8W4PcUv",

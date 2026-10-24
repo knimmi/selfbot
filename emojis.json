@@ -44,5 +44,7 @@
   "fun_lock": "",
   "fun_warn": "",
   "fun_phone": "",
-  "fun_heart": ""
+  "fun_heart": "",
+  "remind": "<:your_remind_emoji:12345678>",
+  "spotify": "<:your_spotify_emoji:12345678>"
 }
