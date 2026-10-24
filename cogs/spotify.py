@@ -17,7 +17,7 @@ class Spotify(commands.Cog):
             self.sp_oauth = SpotifyOAuth(
                 client_id=client_id,
                 client_secret=client_secret,
-                redirect_uri="http://localhost:8080/callback",
+                redirect_uri="https://self.knimmi.de/callback"",
                 scope="user-read-playback-state user-modify-playback-state user-top-read",
                 cache_path=".spotify_cache",
                 open_browser=False
