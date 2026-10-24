@@ -1,7 +1,6 @@
 import discord
 from discord.ext import commands
 import requests
-import random
 
 class Fun(commands.Cog):
     def __init__(self, bot):
@@ -42,37 +41,37 @@ class Fun(commands.Cog):
     async def blurpify(self, ctx, user: discord.User):
         try: await ctx.message.delete()
         except: pass
-        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} {user.mention} has been blurpified! 🗯️")
+        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} {user.mention} has been blurpified! {self.bot.custom_emojis.get('fun_blurp', '')}")
 
     @commands.command()
     async def deepfry(self, ctx, user: discord.User):
         try: await ctx.message.delete()
         except: pass
-        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} {user.mention}'s picture has been deep fried! 🔥")
+        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} {user.mention}'s picture has been deep fried! {self.bot.custom_emojis.get('fun_fire', '')}")
 
     @commands.command()
     async def captcha(self, ctx, user: discord.User):
         try: await ctx.message.delete()
         except: pass
-        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} {user.mention}, please complete the captcha! 🔒")
+        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} {user.mention}, please complete the captcha! {self.bot.custom_emojis.get('fun_lock', '')}")
 
     @commands.command()
     async def threat(self, ctx, user: discord.User):
         try: await ctx.message.delete()
         except: pass
-        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} {user.mention} has issued a threat! ⚠️")
+        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} {user.mention} has issued a threat! {self.bot.custom_emojis.get('fun_warn', '')}")
 
     @commands.command()
     async def iphone(self, ctx, user: discord.User):
         try: await ctx.message.delete()
         except: pass
-        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} {user.mention} just got a new iPhone! 📱")
+        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} {user.mention} just got a new iPhone! {self.bot.custom_emojis.get('fun_phone', '')}")
 
     @commands.command()
     async def ship(self, ctx, user: discord.User):
         try: await ctx.message.delete()
         except: pass
-        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} {user.mention}, you are shipped! {random.choice(['❤️', '💔', '💞', '💓', '💖'])}")
+        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} {user.mention}, you are shipped! {self.bot.custom_emojis.get('fun_heart', '')}")
 
 async def setup(bot):
     await bot.add_cog(Fun(bot))

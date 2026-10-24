@@ -2,16 +2,14 @@ import discord
 from discord.ext import commands
 import json
 import aiohttp
-from datetime import datetime
-import asyncio
 
 class Logging(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        
-        # Ensure our config file has the required structures
         if "webhooks" not in self.bot.config:
             self.bot.config["webhooks"] = {}
+        if "log_toggles" not in self.bot.config:
+            self.bot.config["log_toggles"] = {}
         if "keywords" not in self.bot.config:
             self.bot.config["keywords"] = []
 
@@ -20,258 +18,210 @@ class Logging(commands.Cog):
             json.dump(self.bot.config, f, indent=4)
 
     async def send_log(self, category: str, embed: discord.Embed):
-        webhook_url = self.bot.config["webhooks"].get(category)
-        if not webhook_url:
+        if not self.bot.config["log_toggles"].get(category, True):
             return
+            
+        url = self.bot.config["webhooks"].get(category)
+        if not url: return
 
-        embed.timestamp = datetime.utcnow()
-        try:
-            async with aiohttp.ClientSession() as session:
-                webhook = discord.Webhook.from_url(webhook_url, session=session)
-                await webhook.send(
-                    embed=embed, 
-                    username="BallzBot Logger", 
-                    avatar_url=self.bot.user.display_avatar.url
-                )
-        except Exception as e:
-            print(f"Failed to send {category} log: {e}")
+        async with aiohttp.ClientSession() as session:
+            try:
+                webhook = discord.Webhook.from_url(url, session=session)
+                await webhook.send(embed=embed)
+            except: pass
 
-    # --- COMMANDS ---
+    async def route_stalk(self, target_id_1, target_id_2, embed):
+        """Routes specific user/channel logs to the active Stalk channels."""
+        stalk_cfg = self.bot.config.get("stalk", {})
+        
+        if str(target_id_1) in stalk_cfg:
+            ch = self.bot.get_channel(stalk_cfg[str(target_id_1)])
+            if ch:
+                try: await ch.send(embed=embed)
+                except: pass
+                
+        if target_id_2 and str(target_id_2) in stalk_cfg:
+            ch = self.bot.get_channel(stalk_cfg[str(target_id_2)])
+            if ch:
+                try: await ch.send(embed=embed)
+                except: pass
+
+    @commands.command()
+    async def logsetup(self, ctx, category: str, url: str):
+        try: await ctx.message.delete()
+        except: pass
+        cat = category.lower()
+        self.bot.config["webhooks"][cat] = url
+        self.bot.config["log_toggles"][cat] = True
+        self.save_config()
+        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Log Webhook set for:** `{cat}`")
+
+    @commands.command()
+    async def logtoggle(self, ctx, category: str):
+        try: await ctx.message.delete()
+        except: pass
+        cat = category.lower()
+        current_state = self.bot.config["log_toggles"].get(cat, True)
+        new_state = not current_state
+        self.bot.config["log_toggles"][cat] = new_state
+        self.save_config()
+        status = "ENABLED" if new_state else "DISABLED"
+        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Logging for `{cat}` is now {status}.**")
 
     @commands.command()
     @commands.has_permissions(manage_channels=True, manage_webhooks=True)
     async def autolog(self, ctx):
-        """Automatically builds the logging category, channels, and webhooks."""
         try: await ctx.message.delete()
         except: pass
-        
-        await ctx.send(f"{self.bot.custom_emojis.get('log', '')} **Setting up auto-logging... Please wait.**")
-        
-        try:
-            # Create the master category
-            cat = await ctx.guild.create_category("Webhook Logs")
-            categories = ["friends", "servers", "mentions", "sessions", "guild_updates", "keywords"]
-            
-            for cat_name in categories:
-                # Create the channel and webhook
-                ch = await ctx.guild.create_text_channel(cat_name, category=cat)
-                wh = await ch.create_webhook(name=f"{cat_name.capitalize()}")
-                # Save to config
-                self.bot.config["webhooks"][cat_name] = wh.url
-                await asyncio.sleep(1.5) # Avoid Discord API rate limits
-                
-            self.save_config()
-            await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Auto-Logging Setup Complete!** Check the new channels below.")
-            
-        except discord.Forbidden:
-            await ctx.send(f"{self.bot.custom_emojis.get('arrow', '')} **Error:** I need `Manage Channels` and `Manage Webhooks` permissions in this server to do that.")
-        except Exception as e:
-            await ctx.send(f"{self.bot.custom_emojis.get('arrow', '')} **Error during setup:** {e}")
-
-    @commands.command()
-    async def logsetup(self, ctx, category: str, url: str):
-        """Manually map a webhook to a specific category."""
-        try: await ctx.message.delete()
-        except: pass
-        valid_cats = ["friends", "servers", "mentions", "sessions", "guild_updates", "keywords"]
-        if category.lower() not in valid_cats:
-            await ctx.send(f"{self.bot.custom_emojis.get('arrow', '')} **Invalid Category!** Use: `{', '.join(valid_cats)}`")
-            return
-        
-        self.bot.config["webhooks"][category.lower()] = url
+        await ctx.send(f"{self.bot.custom_emojis.get('loading', '')} **Setting up Auto Logs...**")
+        cat = await ctx.guild.create_category("BallzBot Logs")
+        categories = ["friends", "servers", "mentions", "sessions", "nickname", "keywords", "ghost_pings", "edits"]
+        for c in categories:
+            try:
+                ch = await ctx.guild.create_text_channel(c, category=cat)
+                wh = await ch.create_webhook(name=f"Logger - {c.capitalize()}")
+                self.bot.config["webhooks"][c] = wh.url
+                self.bot.config["log_toggles"][c] = True
+            except: pass
         self.save_config()
-        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **{category.capitalize()}** logging webhook configured!")
+        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Auto Log Setup Complete.**")
 
     @commands.command()
     async def addkw(self, ctx, *, word: str):
         try: await ctx.message.delete()
         except: pass
-        if word.lower() not in [kw.lower() for kw in self.bot.config["keywords"]]:
-            self.bot.config["keywords"].append(word)
+        w = word.lower()
+        if w not in self.bot.config["keywords"]:
+            self.bot.config["keywords"].append(w)
             self.save_config()
-            await ctx.send(f"{self.bot.custom_emojis.get('check', '')} Added keyword: `{word}`")
-        else:
-            await ctx.send(f"{self.bot.custom_emojis.get('arrow', '')} Keyword already exists.")
+            await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Keyword Added:** `{word}`")
 
     @commands.command()
     async def delkw(self, ctx, *, word: str):
         try: await ctx.message.delete()
         except: pass
-        self.bot.config["keywords"] = [kw for kw in self.bot.config["keywords"] if kw.lower() != word.lower()]
-        self.save_config()
-        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} Removed keyword: `{word}`")
+        w = word.lower()
+        if w in self.bot.config["keywords"]:
+            self.bot.config["keywords"].remove(w)
+            self.save_config()
+            await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Keyword Removed:** `{word}`")
 
     @commands.command()
     async def listkw(self, ctx):
         try: await ctx.message.delete()
         except: pass
-        kws = ", ".join(f"`{k}`" for k in self.bot.config["keywords"]) or "None"
-        await ctx.send(f"{self.bot.custom_emojis.get('log', '')} **Tracked Keywords:** {kws}")
-
-    # --- EVENTS ---
-
-    # 1. Friend Updates
-    @commands.Cog.listener()
-    async def on_relationship_add(self, relationship):
-        rt = relationship.type
-        user = relationship.user
-        e_user = self.bot.custom_emojis.get("user", "")
-        e_check = self.bot.custom_emojis.get("check", "")
-        e_mod = self.bot.custom_emojis.get("moderation", "")
-        
-        if rt == discord.RelationshipType.incoming_request:
-            title = f"{e_user} Incoming Friend Request"
-            color = 0xF1C40F
-        elif rt == discord.RelationshipType.outgoing_request:
-            title = f"{e_user} Sent Friend Request"
-            color = 0x3498DB
-        elif rt == discord.RelationshipType.friend:
-            title = f"{e_check} New Friend Added"
-            color = 0x2ECC71
-        elif rt == discord.RelationshipType.blocked:
-            title = f"{e_mod} User Blocked"
-            color = 0xE74C3C
-        else:
-            return
-
-        embed = discord.Embed(title=title, description=f"**User:** {user.mention} (`{user.name}` | `{user.id}`)", color=color)
-        await self.send_log("friends", embed)
+        kws = ", ".join(self.bot.config.get("keywords", []))
+        await ctx.send(f"**Tracked Keywords:** {kws or 'None'}")
 
     @commands.Cog.listener()
-    async def on_relationship_remove(self, relationship):
-        rt = relationship.type
-        user = relationship.user
-        e_arrow = self.bot.custom_emojis.get("arrow", "")
-        e_check = self.bot.custom_emojis.get("check", "")
-        
-        if rt == discord.RelationshipType.friend:
-            title = f"{e_arrow} Friend Removed"
-        elif rt == discord.RelationshipType.blocked:
-            title = f"{e_check} User Unblocked"
-        elif rt == discord.RelationshipType.incoming_request:
-            title = f"{e_arrow} Incoming Request Cancelled/Ignored"
-        elif rt == discord.RelationshipType.outgoing_request:
-            title = f"{e_arrow} Outgoing Request Cancelled"
-        else:
-            title = f"{e_arrow} Relationship Removed: {rt.name}"
+    async def on_ready(self):
+        embed = discord.Embed(title=f"{self.bot.custom_emojis.get('log_session', '')} Session Online", description="Bot successfully connected to Gateway.", color=0x00ff00)
+        await self.send_log("sessions", embed)
 
-        embed = discord.Embed(title=title, description=f"**User:** {user.mention} (`{user.name}` | `{user.id}`)", color=0x95A5A6)
-        await self.send_log("friends", embed)
-
-    # 2. Server Updates
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
-        e_gen = self.bot.custom_emojis.get("general", "")
-        embed = discord.Embed(title=f"{e_gen} Joined Server", description=f"**Name:** {guild.name}\n**ID:** `{guild.id}`\n**Members:** {guild.member_count}", color=0x2ECC71)
-        if guild.icon: embed.set_thumbnail(url=guild.icon.url)
+        embed = discord.Embed(title=f"{self.bot.custom_emojis.get('log_join', '')} Joined Server", description=f"**Name:** {guild.name}\n**ID:** `{guild.id}`\n**Members:** {guild.member_count}", color=0x00ff00)
         await self.send_log("servers", embed)
 
     @commands.Cog.listener()
     async def on_guild_remove(self, guild):
-        e_arrow = self.bot.custom_emojis.get("arrow", "")
-        embed = discord.Embed(title=f"{e_arrow} Left/Kicked from Server", description=f"**Name:** {guild.name}\n**ID:** `{guild.id}`", color=0xE74C3C)
-        if guild.icon: embed.set_thumbnail(url=guild.icon.url)
+        embed = discord.Embed(title=f"{self.bot.custom_emojis.get('log_leave', '')} Left Server", description=f"**Name:** {guild.name}\n**ID:** `{guild.id}`", color=0xff0000)
         await self.send_log("servers", embed)
 
-    # 3. Mentions, Ghost Pings & Keywords
+    @commands.Cog.listener()
+    async def on_relationship_add(self, relationship):
+        if relationship.type == discord.RelationshipType.friend:
+            embed = discord.Embed(title=f"{self.bot.custom_emojis.get('log_friend_add', '')} Friend Added", description=f"**User:** {relationship.user.name} (`{relationship.user.id}`)", color=0x00ff00)
+            await self.send_log("friends", embed)
+
+    @commands.Cog.listener()
+    async def on_relationship_remove(self, relationship):
+        if relationship.type == discord.RelationshipType.friend:
+            embed = discord.Embed(title=f"{self.bot.custom_emojis.get('log_friend_rem', '')} Friend Removed", description=f"**User:** {relationship.user.name} (`{relationship.user.id}`)", color=0xff0000)
+            await self.send_log("friends", embed)
+
+    @commands.Cog.listener()
+    async def on_member_update(self, before, after):
+        if before.nick != after.nick:
+            embed = discord.Embed(title=f"{self.bot.custom_emojis.get('log_nick', '')} Nickname Changed", color=0x00aaff)
+            embed.add_field(name="User", value=f"{after.name} (`{after.id}`)", inline=False)
+            embed.add_field(name="Server", value=after.guild.name, inline=False)
+            embed.add_field(name="Before", value=before.nick or "None", inline=True)
+            embed.add_field(name="After", value=after.nick or "None", inline=True)
+            await self.send_log("nickname", embed)
+
     @commands.Cog.listener()
     async def on_message(self, message):
-        if message.author.id == self.bot.user.id:
-            return
-
-        e_msg = self.bot.custom_emojis.get("message", "")
-        e_log = self.bot.custom_emojis.get("log", "")
-
-        # Check Mentions (Pings)
+        if message.author.id == self.bot.user.id: return
+        
+        stalk_cfg = self.bot.config.get("stalk", {})
+        if str(message.author.id) in stalk_cfg or str(message.channel.id) in stalk_cfg:
+            embed = discord.Embed(title=f"{self.bot.custom_emojis.get('log_msg_sent', '')} Message Sent", color=0x36393f)
+            embed.add_field(name="Author", value=f"{message.author} (`{message.author.id}`)", inline=False)
+            embed.add_field(name="Content", value=message.content or "Embed/Media", inline=False)
+            if message.attachments and "image" in str(message.attachments[0].content_type):
+                embed.set_image(url=message.attachments[0].url)
+            await self.route_stalk(message.author.id, message.channel.id, embed)
+        
         if self.bot.user in message.mentions:
-            embed = discord.Embed(title=f"{e_msg} You Were Mentioned", description=message.content, color=0xF1C40F)
-            embed.add_field(name="Author", value=f"{message.author.mention} (`{message.author.id}`)")
-            embed.add_field(name="Location", value=f"{message.channel.mention} in `{message.guild.name if message.guild else 'DMs'}`")
-            embed.add_field(name="Jump", value=f"[Click Here]({message.jump_url})", inline=False)
+            embed = discord.Embed(title=f"{self.bot.custom_emojis.get('log_mention', '')} Mention Received", color=0xffff00)
+            embed.add_field(name="Author", value=f"{message.author} (`{message.author.id}`)", inline=False)
+            loc = f"<#{message.channel.id}> in **{message.guild.name}**" if message.guild else "Direct Message"
+            embed.add_field(name="Location", value=loc, inline=False)
+            embed.add_field(name="Content", value=message.content or "Embed/Media", inline=False)
             await self.send_log("mentions", embed)
 
-        # Check Keywords
-        tracked_kws = self.bot.config["keywords"]
-        if tracked_kws and message.content:
-            content_lower = message.content.lower()
-            found_kws = [kw for kw in tracked_kws if kw.lower() in content_lower]
-            if found_kws:
-                embed = discord.Embed(title=f"{e_log} Keyword Triggered", description=message.content, color=0x9B59B6)
-                embed.add_field(name="Keyword(s)", value=", ".join(found_kws))
-                embed.add_field(name="Author", value=f"{message.author.mention}")
-                embed.add_field(name="Location", value=f"{message.channel.mention} in `{message.guild.name if message.guild else 'DMs'}`")
-                embed.add_field(name="Jump", value=f"[Click Here]({message.jump_url})", inline=False)
-                await self.send_log("keywords", embed)
+        content_lower = message.content.lower()
+        triggered_words = [kw for kw in self.bot.config.get("keywords", []) if kw in content_lower]
+        if triggered_words:
+            embed = discord.Embed(title=f"{self.bot.custom_emojis.get('log_keyword', '')} Keyword Triggered", color=0xff00ff)
+            embed.add_field(name="Keyword(s)", value=", ".join(triggered_words), inline=False)
+            embed.add_field(name="Author", value=f"{message.author} (`{message.author.id}`)", inline=False)
+            loc = f"<#{message.channel.id}> in **{message.guild.name}**" if message.guild else "Direct Message"
+            embed.add_field(name="Location", value=loc, inline=False)
+            embed.add_field(name="Content", value=message.content, inline=False)
+            await self.send_log("keywords", embed)
 
     @commands.Cog.listener()
     async def on_message_delete(self, message):
-        e_msg = self.bot.custom_emojis.get("message", "")
+        if message.author.id == self.bot.user.id: return
         
-        # Ghost Ping via Deletion
-        if self.bot.user in message.mentions and message.author.id != self.bot.user.id:
-            embed = discord.Embed(title=f"{e_msg} Ghost Ping (Message Deleted)", description=message.content, color=0xE91E63)
-            embed.add_field(name="Author", value=f"{message.author.mention} (`{message.author.id}`)")
-            embed.add_field(name="Location", value=f"{message.channel.mention} in `{message.guild.name if message.guild else 'DMs'}`")
-            await self.send_log("mentions", embed)
+        embed = discord.Embed(title=f"{self.bot.custom_emojis.get('log_delete', '')} Message Deleted", color=0xff0000)
+        embed.add_field(name="Author", value=f"{message.author} (`{message.author.id}`)", inline=False)
+        loc = f"<#{message.channel.id}> in **{message.guild.name}**" if message.guild else "Direct Message"
+        embed.add_field(name="Location", value=loc, inline=False)
+        embed.add_field(name="Content", value=message.content or "No Text", inline=False)
+        
+        if message.attachments:
+            urls = [a.url for a in message.attachments]
+            embed.add_field(name="Attachments", value="\n".join(urls), inline=False)
+            if message.attachments[0].content_type and "image" in message.attachments[0].content_type:
+                embed.set_image(url=message.attachments[0].url)
+
+        await self.route_stalk(message.author.id, message.channel.id, embed)
+        
+        is_ghost_ping = self.bot.user in message.mentions
+        if is_ghost_ping: 
+            embed.set_footer(text=f"{self.bot.custom_emojis.get('log_warning', '')} GHOST PING DETECTED")
+            await self.send_log("ghost_pings", embed)
+        elif message.guild is None: 
+            await self.send_log("edits", embed)
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
-        e_msg = self.bot.custom_emojis.get("message", "")
+        if before.author.id == self.bot.user.id or before.content == after.content: return
         
-        # Ghost Ping via Edit (Mention removed)
-        if self.bot.user in before.mentions and self.bot.user not in after.mentions and before.author.id != self.bot.user.id:
-            embed = discord.Embed(title=f"{e_msg} Ghost Ping (Mention Removed)", color=0xE91E63)
-            embed.add_field(name="Before", value=before.content or "*Empty*", inline=False)
-            embed.add_field(name="After", value=after.content or "*Empty*", inline=False)
-            embed.add_field(name="Author", value=f"{before.author.mention}")
-            embed.add_field(name="Location", value=f"{before.channel.mention}")
-            await self.send_log("mentions", embed)
-
-    # 4. Role & Nickname Changes (Guild Updates)
-    @commands.Cog.listener()
-    async def on_member_update(self, before, after):
-        if before.id != self.bot.user.id:
-            return 
-
-        e_cfg = self.bot.custom_emojis.get("config", "")
-
-        # Nickname Change
-        if before.nick != after.nick:
-            embed = discord.Embed(title=f"{e_cfg} Nickname Changed", color=0x3498DB)
-            embed.add_field(name="Server", value=f"{before.guild.name} (`{before.guild.id}`)")
-            embed.add_field(name="Old Nick", value=before.nick or "*None*")
-            embed.add_field(name="New Nick", value=after.nick or "*None*")
-            await self.send_log("guild_updates", embed)
-
-        # Role Change
-        if before.roles != after.roles:
-            added = [r.name for r in after.roles if r not in before.roles]
-            removed = [r.name for r in before.roles if r not in after.roles]
-            if added or removed:
-                embed = discord.Embed(title=f"{e_cfg} Roles Changed", color=0x3498DB)
-                embed.add_field(name="Server", value=f"{before.guild.name} (`{before.guild.id}`)", inline=False)
-                if added: embed.add_field(name="Added", value=", ".join(added))
-                if removed: embed.add_field(name="Removed", value=", ".join(removed))
-                await self.send_log("guild_updates", embed)
-
-    # 5. Session Logging
-    @commands.Cog.listener()
-    async def on_ready(self):
-        e_stat = self.bot.custom_emojis.get("status", "")
-        embed = discord.Embed(title=f"{e_stat} Session Ready", description=f"Successfully logged in as `{self.bot.user}`", color=0x2ECC71)
-        await self.send_log("sessions", embed)
-
-    @commands.Cog.listener()
-    async def on_connect(self):
-        e_stat = self.bot.custom_emojis.get("status", "")
-        embed = discord.Embed(title=f"{e_stat} Gateway Connected", description="Established connection to Discord Gateway.", color=0x3498DB)
-        await self.send_log("sessions", embed)
-
-    @commands.Cog.listener()
-    async def on_disconnect(self):
-        e_stat = self.bot.custom_emojis.get("status", "")
-        embed = discord.Embed(title=f"{e_stat} Gateway Disconnected", description="Lost connection to Discord Gateway.", color=0xE74C3C)
-        await self.send_log("sessions", embed)
+        embed = discord.Embed(title=f"{self.bot.custom_emojis.get('log_edit', '')} Message Edited", color=0xffaa00)
+        embed.add_field(name="Author", value=f"{before.author} (`{before.author.id}`)", inline=False)
+        loc = f"<#{before.channel.id}> in **{before.guild.name}**" if before.guild else "Direct Message"
+        embed.add_field(name="Location", value=loc, inline=False)
+        embed.add_field(name="Before", value=before.content or "None", inline=False)
+        embed.add_field(name="After", value=after.content or "None", inline=False)
+        
+        await self.route_stalk(before.author.id, before.channel.id, embed)
+        
+        if before.guild is None:
+            await self.send_log("edits", embed)
 
 async def setup(bot):
     await bot.add_cog(Logging(bot))

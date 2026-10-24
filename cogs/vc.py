@@ -61,18 +61,39 @@ class Voice(commands.Cog):
         if ctx.author.voice and member.voice and member.voice.channel == ctx.author.voice.channel:
             await member.move_to(channel)
 
+    # --- FIXED: JOIN AND LEAVE ---
+
     @commands.command()
     async def vcjoin(self, ctx, channel: discord.VoiceChannel):
         try: await ctx.message.delete()
         except: pass
-        await ctx.author.move_to(channel)
+        await self.bot.ws.send_as_json({
+            "op": 4,
+            "d": {
+                "guild_id": str(ctx.guild.id),
+                "channel_id": str(channel.id),
+                "self_mute": False,
+                "self_deaf": False
+            }
+        })
+        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Joined** {channel.mention}")
 
     @commands.command()
     async def vcleave(self, ctx):
         try: await ctx.message.delete()
         except: pass
-        if ctx.author.voice:
-            await ctx.author.move_to(None)
+        await self.bot.ws.send_as_json({
+            "op": 4,
+            "d": {
+                "guild_id": str(ctx.guild.id) if ctx.guild else None,
+                "channel_id": None,
+                "self_mute": False,
+                "self_deaf": False
+            }
+        })
+        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Left VC**")
+
+    # -----------------------------
 
     @commands.command()
     async def vclimit(self, ctx, limit: int, channel: discord.VoiceChannel = None):
@@ -95,7 +116,7 @@ class Voice(commands.Cog):
             f.write(html)
         await ctx.send("Transcript:", file=discord.File("transcript.html"))
 
-    # --- NEW: SPOOFING ---
+    # --- SPOOFING ---
 
     @commands.command()
     async def vccam(self, ctx):
@@ -105,7 +126,6 @@ class Voice(commands.Cog):
         if not ctx.author.voice:
             return await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **You need to be in a VC first!**")
         
-        # We send a raw OP4 payload to the gateway to strictly bypass library checks
         await self.bot.ws.send_as_json({
             "op": 4,
             "d": {
@@ -137,7 +157,6 @@ class Voice(commands.Cog):
             }
         })
         await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Spoofing Stream (Live) in VC!**")
-
 
 async def setup(bot):
     await bot.add_cog(Voice(bot))

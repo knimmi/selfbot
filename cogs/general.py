@@ -1,6 +1,13 @@
 import discord
 from discord.ext import commands
-import os, sys, re, urllib.parse, urllib.request, asyncio, random
+import os
+import sys
+import re
+import urllib.parse
+import urllib.request
+import asyncio
+import random
+from datetime import datetime, timezone
 
 class General(commands.Cog):
     def __init__(self, bot):
@@ -21,7 +28,6 @@ class General(commands.Cog):
 > 
 > {e.get('general', '')} **GENERAL SECTION** :- `.help gnrl`
 > {e.get('config', '')} **CONFIG SECTION** :- `.help config`
-> {e.get('upi', '')} **UPI SECTION** :- `.help upi`
 > {e.get('crypto', '')} **CRYPTO SECTION** :- `.help crypto`
 > {e.get('message', '')} **MESSAGE SECTION** :- `.help msg`
 > {e.get('status', '')} **STATUS SECTION** :- `.help status`
@@ -39,82 +45,84 @@ class General(commands.Cog):
 > {e.get('log', '')} **LOGGING SECTION** :- `.help log`
 
 > {e.get('config', '')} **SET PREFIX** :- `.prefix <prefix>`
-> {e.get('status', '')} **DEVELOPER** :- `knimmi`"""
+> {e.get('status', '')} **RISK MODE** :- `.risk`"""
         elif "config" in cat:
             desc = f"""{e.get('crown', '')} **Config Section** {e.get('crown', '')}
-{e.get('config', '')} **Set Upi** :- `.setupi <upi_id>`
-{e.get('config', '')} **Set Upi 2** :- `.setupi2 <upi_id2>`
-{e.get('config', '')} **Set Qr** :- `.setqr <qr_code>`
-{e.get('config', '')} **Set Qr 2** :- `.setqr2 <qr_code2>`
-{e.get('config', '')} **Set Server Link** :- `.setsrvlink <link>`
-{e.get('config', '')} **Set User Id** :- `.setuserid <id>`
-{e.get('config', '')} **Set Ltc Addy** :- `.setaddy <addy>`
-{e.get('config', '')} **Set Ltc Addy 2** :- `.setaddy2 <addy2>`
-{e.get('config', '')} **Set Binance Id** :- `.setbinid <id>`
-{e.get('config', '')} **Set Ltc Key** :- `.setltckey <ltc_key>`"""
+{e.get('config', '')} **Set QR Code** :- `.setqr <qr_link>`
+{e.get('config', '')} **Set Server Link** :- `.setsrvlink <server_link>`
+{e.get('config', '')} **Set User ID** :- `.setuserid [user]`
+{e.get('config', '')} **Set LTC Addy** :- `.setaddy <ltc_addy>`
+{e.get('config', '')} **Set LTC Addy 2** :- `.setaddy2 <ltc_addy>`
+{e.get('config', '')} **Set LTC Key** :- `.setltckey <ltc_key>`
+{e.get('config', '')} **Customise Emoji** :- `.emoji <name> <emoji>`
+{e.get('config', '')} **Toggle Risk Mode** :- `.risk`"""
         elif "gnrl" in cat:
             desc = f"""{e.get('crown', '')} **General Section** {e.get('crown', '')}
-{e.get('general', '')} **Show Allcmds** :- `.allcmds`
+{e.get('general', '')} **Show All Commands** :- `.allcmds`
 {e.get('general', '')} **Restart Bot** :- `.restart`
-{e.get('general', '')} **Server Info** :- `.srvinfo`
+{e.get('general', '')} **Server Info** :- `.srvinfo [server_id/link]`
 {e.get('general', '')} **Selfbot Info** :- `.selfbot`
-{e.get('general', '')} **User Info** :- `.user_info <@user>`
-{e.get('general', '')} **Yt Search** :- `.yt <title-search>`
-{e.get('general', '')} **Abuse** :- `.abuse <user>`"""
+{e.get('general', '')} **User Info** :- `.user_info [user_id/@user]`
+{e.get('general', '')} **YouTube Search** :- `.ytsearch <title>`
+{e.get('general', '')} **(Risk) Abuse** :- `.abuser [user_id/@user]`"""
         elif "crypto" in cat:
             desc = f"""{e.get('crown', '')} **Crypto Section** {e.get('crown', '')}
-{e.get('ltc', '')} **Send Ltc** :- `.send <addy> <amount>`
+{e.get('ltc', '')} **Send LTC** :- `.send <addy> <amount>`
 {e.get('ltc', '')} **Check Balance** :- `.bal <addy>`
-{e.get('ltc', '')} **Check Mybal** :- `.mybal`
-{e.get('ltc', '')} **Second Check Mybal** :- `.mybal2`
-{e.get('ltc', '')} **Ltc Addy** :- `.addy`
-{e.get('ltc', '')} **Second Ltc Addy** :- `.addy2`
-{e.get('ltc', '')} **Ltc Custom Qr** :- `.ltcqr <addy> <usd_amt>`
+{e.get('ltc', '')} **Check My Balance** :- `.mybal`
+{e.get('ltc', '')} **Check My Second Balance** :- `.mybal2`
+{e.get('ltc', '')} **LTC Addy** :- `.addy`
+{e.get('ltc', '')} **Second LTC Addy** :- `.addy2`
+{e.get('ltc', '')} **LTC Custom QR** :- `.ltcqr <addy> <eur_amt>`
 {e.get('ltc', '')} **Binance ID** :- `.bid`
-{e.get('ltc', '')} **Ltc Price In Usd** :- `.ltc`
-{e.get('sol', '')} **Sol Price In Usd** :- `.sol`
-{e.get('btc', '')} **Btc Price In Usd** :- `.btc`
-{e.get('usdt', '')} **Usdt Price In Usd** :- `.usdt`"""
+{e.get('ltc', '')} **Static QR Code** :- `.qr`
+{e.get('ltc', '')} **Static QR Code 2** :- `.qr2`
+{e.get('ltc', '')} **LTC Price In EUR** :- `.ltc`
+{e.get('sol', '')} **SOL Price In EUR** :- `.sol`
+{e.get('btc', '')} **BTC Price In EUR** :- `.btc`
+{e.get('usdt', '')} **USDC Price In EUR** :- `.usdc`"""
         elif "msg" in cat:
             desc = f"""{e.get('crown', '')} **Message Section** {e.get('crown', '')}
-{e.get('message', '')} **Spam Msg** :- `.spam <amount> <msg>`
-{e.get('message', '')} **Clear Msg** :- `.clear <amount>`
+{e.get('message', '')} **(Risk) Spam Msg** :- `.spam <amount> <msg>`
+{e.get('message', '')} **(Risk) Clear Msg** :- `.clear <amount>`
 {e.get('message', '')} **Direct Msg** :- `.dm <@user> <msg>`
 {e.get('message', '')} **Send Msg Ticket Create** :- `.sc <cg-id> <msg>`
 {e.get('message', '')} **Remove Msg Ticket Create** :- `.stopsc <cg-id>`
 {e.get('message', '')} **Translate Msg** :- `.translate <msg>`
-{e.get('message', '')} **Dm All In Server** :- `.dmall <msg>`
-{e.get('message', '')} **Mass Dm Friends** :- `.massdmfrnds <msg>`"""
+{e.get('message', '')} **(Risk) Dm All In Server** :- `.dmall <msg>`
+{e.get('message', '')} **(Risk) Mass Dm Friends** :- `.massdmfriends <msg>`"""
         elif "status" in cat:
             desc = f"""{e.get('crown', '')} **Status Section** {e.get('crown', '')}
-{e.get('status', '')} **Status Rotator** :- `.rotate <emoji id , msg> / <emoji id , msg> / <repeat again>`
-{e.get('status', '')} **Stop Rotator** :- `.stop_rotate`
-{e.get('status', '')} **Stream Status** :- `.stream <title>`
-{e.get('status', '')} **Playing Status** :- `.play <title>`
-{e.get('status', '')} **Watching Status** :- `.watching <title>`
-{e.get('status', '')} **Listening Status** :- `.listening <title>`
 {e.get('status', '')} **Custom Status** :- `.status <custom text>`
-{e.get('status', '')} **Presence** :- `.presence <dnd,idle etc.>`
+{e.get('status', '')} **Status Rotator** :- `.rotate <msg> / <msg> / <msg>`
+{e.get('status', '')} **Stop Rotator** :- `.stop_rotate`
+{e.get('status', '')} **Stream Status** :- `.stream <title> [img_url]`
+{e.get('status', '')} **Playing Status** :- `.play <title> [img_url]`
+{e.get('status', '')} **Watching Status** :- `.watching <title> [img_url]`
+{e.get('status', '')} **Listening Status** :- `.listening <title> [img_url]`
 {e.get('status', '')} **Remove Status** :- `.stopactivity`"""
         elif "calc" in cat:
             desc = f"""{e.get('crown', '')} **Calculate Section** {e.get('crown', '')}
 {e.get('calc', '')} **Calculate** :- `.math <equation>`
-{e.get('calc', '')} **Inr To Crypto** :- `.i2c <inr amount>`
-{e.get('calc', '')} **Crypto To Inr** :- `.c2i <crypto amount>`
-{e.get('ltc', '')} **Ltc To Usd** :- `.l2u <ltc amount>`
-{e.get('ltc', '')} **Usd To Ltc** :- `.u2l <usd amount>`"""
+{e.get('calc', '')} **Fiat To Crypto** :- `.f2c <fiat_name> <amount> <crypto_name>`
+{e.get('calc', '')} **Crypto To Fiat** :- `.c2f <crypto_name> <amount> <fiat_name>`
+{e.get('ltc', '')} **Ltc To EUR** :- `.l2e <ltc amount>`
+{e.get('ltc', '')} **EUR To Ltc** :- `.e2l <eur amount>`"""
         elif "auto" in cat:
             desc = f"""{e.get('crown', '')} **Auto Sender Section** {e.get('crown', '')}
-{e.get('auto', '')} **AutoRespond** :- `.ar <trigger>, <response>`
-{e.get('auto', '')} **Remove Respond** :- `.removear <triger>`
-{e.get('auto', '')} **AutoRespond List** :- `.ar_list`
-{e.get('auto', '')} **AutoMsg** :- `.am <time> <chnl_id> <msg>`
-{e.get('auto', '')} **Stop AutoMsg** :- `.am_stop <chnl_id>`
-{e.get('auto', '')} **AutoMsg List** :- `.am_list`"""
+{e.get('auto', '')} **Auto Respond** :- `.ar <trigger>, <response>`
+{e.get('auto', '')} **Remove Respond** :- `.removear <trigger>`
+{e.get('auto', '')} **Auto Respond List** :- `.arlist`
+{e.get('auto', '')} **Auto Message** :- `.am <time> [chnl_id] <msg>`
+{e.get('auto', '')} **Stop Auto Message** :- `.stopam [chnl_id]`
+{e.get('auto', '')} **Auto Message List** :- `.amlist`
+{e.get('auto', '')} **Auto Slash** :- `.as <bot_id> <chnl_id> <cmd> <time> [key=val]`
+{e.get('auto', '')} **Stop Auto Slash** :- `.asstop [chnl_id]`
+{e.get('auto', '')} **Auto Slash List** :- `.aslist`"""
         elif "afk" in cat:
             desc = f"""{e.get('crown', '')} **Afk Section** {e.get('crown', '')}
-{e.get('afk', '')} **Afk** :- `.afk <reason>`
-{e.get('afk', '')} **Remove Afk** :- `.unafk`"""
+{e.get('afk', '')} **Toggle AFK** :- `.afk [msg]`
+{e.get('afk', '')} **Remove AFK** :- `.unafk`"""
         elif "checker" in cat:
             desc = f"""{e.get('crown', '')} **Checker Section** {e.get('crown', '')}
 {e.get('checker', '')} **Check Promo** :- `.checkpromo <promo>`
@@ -124,27 +132,28 @@ class General(commands.Cog):
 {e.get('image', '')} **Get Avatar** :- `.avatar <@user>`
 {e.get('image', '')} **Get Icon Of Server** :- `.icon`
 {e.get('image', '')} **Get Image** :- `.get_image <query>`"""
-        elif "upi" in cat:
-            desc = f"""{e.get('crown', '')} **Upi Section** {e.get('crown', '')}
-{e.get('upi', '')} **Upi Id** :- `.upi`
-{e.get('upi', '')} **Second Upi Id** :- `.upi2`
-{e.get('upi', '')} **Qr Code** :- `.qr`
-{e.get('upi', '')} **Second Qr Code** :- `.qr2`
-{e.get('upi', '')} **Custom Qr** :- `.cqr <amt> <note>`"""
         elif "mod" in cat:
             desc = f"""{e.get('crown', '')} **Moderation Section** {e.get('crown', '')}
-{e.get('moderation', '')} **Ban** :- `.ban <user>`
-{e.get('moderation', '')} **Kick** :- `.kick <user>`
-{e.get('moderation', '')} **Ban Id** :- `.banid <userid>`
-{e.get('moderation', '')} **Unban Id** :- `.unban <userid>`
-{e.get('moderation', '')} **Nuke Channel** :- `.nuke`
-{e.get('moderation', '')} **Nuke Server** :- `.nukesrv`
-{e.get('moderation', '')} **Hide** :- `.hide`
-{e.get('moderation', '')} **Unhide** :- `.unhide`
+{e.get('moderation', '')} **Ban** :- `.ban <user> [srv_id]`
+{e.get('moderation', '')} **Kick** :- `.kick <user> [srv_id]`
+{e.get('moderation', '')} **Unban** :- `.unban <user> [srv_id]`
+{e.get('moderation', '')} **Nuke Channel** :- `.nuke [chnl_id]`
+{e.get('moderation', '')} **Nuke Server** :- `.nukesrv [srv_id]`
+{e.get('moderation', '')} **Hide Channel** :- `.hide [chnl_id]`
+{e.get('moderation', '')} **Unhide Channel** :- `.unhide [chnl_id]`
+{e.get('moderation', '')} **Lock Channel** :- `.lock [chnl_id]`
+{e.get('moderation', '')} **Unlock Channel** :- `.unlock [chnl_id]`
+{e.get('moderation', '')} **Delete Channel** :- `.chnldel [chnl_id]`
+{e.get('moderation', '')} **Delete Role** :- `.roledel <role_id>`
+{e.get('moderation', '')} **Slowmode** :- `.slow <seconds> [chnl_id]`
+{e.get('moderation', '')} **Remove Slowmode** :- `.unslow [chnl_id]`
 {e.get('moderation', '')} **Create Channel** :- `.chnl <chnl-name>`
 {e.get('moderation', '')} **Create Role** :- `.role <role-name>`
 {e.get('moderation', '')} **Srv Clone** :- `.csrv <copy id> <target id>`
-{e.get('moderation', '')} **Steal Emoji** :- `.steal <emoji> [server_id] [name]`"""
+{e.get('moderation', '')} **Steal Emoji** :- `.steal <emoji> [srv_id]`
+{e.get('moderation', '')} **Delete Emoji** :- `.demoji <emoji>`
+{e.get('moderation', '')} **AutoMod Add** :- `.mod <trigger> <delete/timeout/ban> [srv_id]`
+{e.get('moderation', '')} **AutoMod Del** :- `.delmod <trigger> [srv_id]`"""
         elif "fun" in cat:
             desc = f"""{e.get('crown', '')} **Fun Section** {e.get('crown', '')}
 {e.get('fun', '')} **Gen Joke** :- `.joke`
@@ -175,13 +184,17 @@ class General(commands.Cog):
 {e.get('vc', '')} **Transcript** :- `.transcript <amt of msg>`"""
         elif "user" in cat:
             desc = f"""{e.get('crown', '')} **User Section** {e.get('crown', '')}
+{e.get('user', '')} **Leave Server** :- `.lg [srv_id]`
 {e.get('user', '')} **Leave All groups** :- `.leaveallgroups`
-{e.get('user', '')} **Delete Friends** :- `.delallfriends`
+{e.get('user', '')} **Delete Friend** :- `.df <user>`
+{e.get('user', '')} **Delete All Friends** :- `.delallfriends`
+{e.get('user', '')} **Close DM** :- `.close [chnl_id]`
 {e.get('user', '')} **Close All Dms** :- `.closealldms`
-{e.get('user', '')} **Set Nickname** :- `.setnick <server_id> <nickname>`
+{e.get('user', '')} **Set Nickname** :- `.setnick [srv_id] <nickname>`
 {e.get('user', '')} **Set Bio** :- `.setbio <text>`
 {e.get('user', '')} **Set Pronouns** :- `.setpronouns <text>`
-{e.get('user', '')} **Set Display Name** :- `.setdisplayname <name>`"""
+{e.get('user', '')} **Set Display Name** :- `.setdisplayname <name>`
+{e.get('user', '')} **Set Presence** :- `.presence <online/idle/dnd/offline>`"""
         elif "nsfw" in cat:
             desc = f"""{e.get('crown', '')} **NSFW Section** {e.get('crown', '')}
 {e.get('nsfw', '')} **Hass** :- `.hass`
@@ -192,10 +205,11 @@ class General(commands.Cog):
 {e.get('nsfw', '')} **Hentai** :- `.hentai`"""
         elif "vouch" in cat:
             desc = f"""{e.get('crown', '')} **Vouch Section** {e.get('crown', '')}
-{e.get('vouch', '')} **Vouch** :- `.vouch <product for much>`
-{e.get('vouch', '')} **Exchange Vouch** :- `.exch <This To This>`
-{e.get('vouch', '')} **I2c Vouch** :- `.i2cvouch <inr amt> <ltc amt>`
-{e.get('vouch', '')} **C2i Vouch** :- `.c2ivouch <ltc amt> <inr amt>`"""
+{e.get('vouch', '')} **Setup Vouch Channel** :- `.setupvouch [chnl_id] <role>`
+{e.get('vouch', '')} **Vouch Template** :- `.genvouch <product for price>`
+{e.get('vouch', '')} **Exchange Template** :- `.genexch <This for That>`
+{e.get('vouch', '')} **Fiat-Crypto Vouch** :- `.genf2c <fiat amt> <crypto amt>`
+{e.get('vouch', '')} **Crypto-Fiat Vouch** :- `.genc2f <crypto amt> <fiat amt>`"""
         elif "log" in cat:
             desc = f"""{e.get('crown', '')} **Logging Section** {e.get('crown', '')}
 {e.get('log', '')} **Auto Log Setup** :- `.autolog`
@@ -213,12 +227,12 @@ class General(commands.Cog):
     async def allcmds(self, ctx):
         try: await ctx.message.delete()
         except: pass
-        categories = ['.help config', '.help gnrl', '.help upi', '.help crypto', '.help vouch', '.help msg', 
+        categories = ['.help config', '.help gnrl', '.help crypto', '.help vouch', '.help msg', 
                       '.help status', '.help calc', '.help auto', '.help mod', '.help afk', '.help checker', 
                       '.help image', '.help fun', '.help vc', '.help user', '.help nsfw', '.help log']
         for cat in categories:
             await ctx.send(cat)
-            await asyncio.sleep(1.5)
+            await asyncio.sleep(1.2)
 
     @commands.command()
     async def restart(self, ctx):
@@ -229,63 +243,107 @@ class General(commands.Cog):
     async def selfbot(self, ctx):
         try: await ctx.message.delete()
         except: pass
-        await ctx.send('**SELFBOT DETAILS**\n- NAME > Knimmi SelfBot\n- VERSION > 1\n- DEVELOPER > `Knimmi`')
+        
+        now = datetime.now(timezone.utc)
+        delta = now - self.bot.start_time
+        days = delta.days
+        hours, remainder = divmod(delta.seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        uptime_str = f"{days}d {hours}h {minutes}m {seconds}s"
+        risk_str = "ENABLED" if self.bot.config.get("risk_mode", False) else "DISABLED"
 
-    @commands.command()
-    async def srvinfo(self, ctx):
+        info = f"""### {self.bot.custom_emojis.get('crown', '')} BallzBot Information
+- **Developer:** `knimmi`
+- **Uptime:** `{uptime_str}`
+- **Commands Executed:** `{self.bot.commands_executed}`
+- **Cached Guilds:** `{len(self.bot.guilds)}`
+- **Friends:** `{len(self.bot.user.friends)}`
+- **Risk Mode:** `{risk_str}`"""
+        await ctx.send(info)
+
+    @commands.command(aliases=["srv"])
+    async def srvinfo(self, ctx, target: str = None):
+        """Shows server info. Target can be a guild ID, an invite link, or blank for current guild."""
         try: await ctx.message.delete()
         except: pass
-        await ctx.send(f"**SERVER NAME** : __`{ctx.guild.name}`__\n`-` **ID** : `{ctx.guild.id}`\n`-` **CREATION** : `{ctx.guild.created_at}`\n`-` **OWNER** : `<@{ctx.guild.owner_id}>`")
+        
+        guild = None
+        if target is None:
+            guild = ctx.guild
+        elif target.isdigit():
+            guild = self.bot.get_guild(int(target))
+        elif "discord.gg" in target or "discord.com/invite" in target:
+            invite_code = target.split("/")[-1]
+            try:
+                invite = await self.bot.fetch_invite(invite_code)
+                guild = invite.guild
+            except Exception as e:
+                return await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **Invalid Invite:** {e}")
+        
+        if not guild:
+            return await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **Server not found.**")
 
-    @commands.command()
-    async def user_info(self, ctx, user: discord.User):
+        created = guild.created_at.strftime("%Y-%m-%d %H:%M:%S UTC")
+        owner = getattr(guild, "owner", f"ID: {getattr(guild, 'owner_id', 'Unknown')}")
+        desc = f"""### {self.bot.custom_emojis.get('general', '')} Server Info: {guild.name}
+- **Server ID:** `{guild.id}`
+- **Created:** `{created}`
+- **Owner:** `{owner}`
+- **Members:** `{getattr(guild, 'member_count', 'Unknown')}`
+- **Icon URL:** {guild.icon.url if guild.icon else 'No Icon'}"""
+        await ctx.send(desc)
+
+    @commands.command(aliases=["whois", "ui"])
+    async def user_info(self, ctx, user: discord.User = None):
+        """Displays user info. Supports @mention, raw ID, or blank (defaults to self)."""
         try: await ctx.message.delete()
         except: pass
-        await ctx.send(f"## User Info\n- **Name**: `{user.name}`\n- **Display**: `{user.display_name}`\n- **ID**: `{user.id}`\n- **Avatar**: {user.display_avatar.url}")
+        
+        target = user or ctx.author
+        created = target.created_at.strftime("%Y-%m-%d %H:%M:%S UTC")
+        account_age = (datetime.now(timezone.utc) - target.created_at).days
+        
+        is_friend = target in self.bot.user.friends
+        is_blocked = target in self.bot.user.blocked
+        rel_str = "Friend" if is_friend else ("Blocked" if is_blocked else "None")
+        
+        mutuals = len(target.mutual_guilds) if hasattr(target, "mutual_guilds") else 0
+        avatar_url = target.display_avatar.url
+
+        info = f"""### {self.bot.custom_emojis.get('user', '')} User Profile: {target.name}
+- **Display Name:** `{target.display_name}`
+- **User ID:** `{target.id}`
+- **Bot Account?** `{target.bot}`
+- **Account Created:** `{created}` (`{account_age}` days ago)
+- **Relationship:** `{rel_str}`
+- **Mutual Servers:** `{mutuals}`
+- **Avatar:** {avatar_url}"""
+        await ctx.send(info)
 
     @commands.command()
-    async def yt(self, ctx, *, search=''):
+    async def ytsearch(self, ctx, *, search: str):
         try: await ctx.message.delete()
         except: pass
-        if search == '': return await ctx.send(f'{self.bot.custom_emojis.get("error", "")} `PROVIDE A REQUEST...`')
         qs = urllib.parse.urlencode({"search_query": search})
-        html = urllib.request.urlopen("http://www.youtube.com/results?" + qs)
-        results = re.findall(r"watch\?v=(\S{11})", html.read().decode())
-        if results:
-            await ctx.send(f"{self.bot.custom_emojis.get('check', '')}\n`-` **URL** : http://www.youtube.com/watch?v={results[0]}")
+        try:
+            html = urllib.request.urlopen("http://www.youtube.com/results?" + qs)
+            results = re.findall(r"watch\?v=(\S{11})", html.read().decode())
+            if results:
+                await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Result for `{search}`:** http://www.youtube.com/watch?v={results[0]}")
+            else:
+                await ctx.send(f"{self.bot.custom_emojis.get('error', '')} No results found.")
+        except Exception as e:
+            await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **Search error:** {e}")
 
-    @commands.command()
-    async def abuse(self, ctx, member: discord.Member = None):
+    @commands.command(aliases=["abuse"])
+    async def abuser(self, ctx, user: discord.User = None):
         try: await ctx.message.delete()
         except: pass
-        member = member or ctx.author
-        abuses = ["teri ma ka bhosda", "maa chuda laude", "bhosdike", "chutiya", "madarchod", "behen ke laude", "gandu", "dumbass", "nigga", "bhadwe"]
-        await ctx.send(f"{member.mention} **{random.choice(abuses)}**")
-
-    # --- VOUCH COMMANDS ---
-    @commands.command()
-    async def exch(self, ctx, *, text):
-        try: await ctx.message.delete()
-        except: pass
-        await ctx.send(f'+rep {self.bot.config.get("User_Id")} {text}\n{self.bot.config.get("SERVER_Link")}\n**PLEASE VOUCH ME HERE**')
-
-    @commands.command()
-    async def vouch(self, ctx, *, text):
-        try: await ctx.message.delete()
-        except: pass
-        await ctx.send(f'+rep {self.bot.config.get("User_Id")} {text}\n{self.bot.config.get("SERVER_Link")}\n**PLEASE VOUCH ME HERE**')
-
-    @commands.command()
-    async def i2cvouch(self, ctx, inr, inr2):
-        try: await ctx.message.delete()
-        except: pass
-        await ctx.send(f'+rep {self.bot.config.get("User_Id")} {inr} UPI TO {inr2} LTC\n{self.bot.config.get("SERVER_Link")}\n**PLEASE VOUCH ME HERE**')
-
-    @commands.command()
-    async def c2ivouch(self, ctx, inr, inr2):
-        try: await ctx.message.delete()
-        except: pass
-        await ctx.send(f'+rep {self.bot.config.get("User_Id")} {inr} LTC TO {inr2} UPI\n{self.bot.config.get("SERVER_Link")}\n**PLEASE VOUCH ME HERE**')
+        if not self.bot.check_risk(ctx):
+            return
+        target = user or ctx.author
+        abuses = ["teri ma ka bhosda", "maa chuda laude", "bhosdike", "chutiya", "madarchod", "behen ke laude", "gandu", "dumbass", "bhadwe"]
+        await ctx.send(f"{target.mention} **{random.choice(abuses)}**")
 
 async def setup(bot):
     await bot.add_cog(General(bot))
