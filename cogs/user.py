@@ -11,20 +11,28 @@ class User(commands.Cog):
         if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[{ctx.command.name}] {e}")
 
     @commands.command()
-    @commands.has_permissions(manage_channels=True)
+    @commands.has_permissions(manage_channels=True, manage_webhooks=True)
     async def stalk(self, ctx, target_id: int):
         try: await ctx.message.delete()
         except: pass
         try:
             if "stalk" not in self.bot.config: self.bot.config["stalk"] = {}
             tid = str(target_id)
+            
             if tid in self.bot.config["stalk"]:
                 del self.bot.config["stalk"][tid]
                 with open("config.json", "w", encoding="utf-8") as f: json.dump(self.bot.config, f, indent=4)
                 await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Stopped stalking:** `{target_id}`")
             else:
-                ch = await ctx.guild.create_text_channel(f"stalk-{target_id}")
-                self.bot.config["stalk"][tid] = ch.id
+                cat_name = "BallzBot Logs"
+                cat = discord.utils.get(ctx.guild.categories, name=cat_name)
+                if not cat:
+                    cat = await ctx.guild.create_category(cat_name)
+                
+                ch = await ctx.guild.create_text_channel(f"stalk-{target_id}", category=cat)
+                wh = await ch.create_webhook(name=f"Logger - Stalk {target_id}")
+                
+                self.bot.config["stalk"][tid] = wh.url
                 with open("config.json", "w", encoding="utf-8") as f: json.dump(self.bot.config, f, indent=4)
                 await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Stalking `{target_id}` in {ch.mention}**")
         except Exception as e: self.log_err(ctx, e)

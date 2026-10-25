@@ -35,18 +35,24 @@ class Logging(commands.Cog):
             except Exception as e:
                 if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[Webhook send_log - {category}] {e}")
 
-    async def route_stalk(self, target_id_1, target_id_2, embed):
+    async def route_stalk(self, target_id_1, target_id_2, target_id_3, embed):
         stalk_cfg = self.bot.config.get("stalk", {})
-        try:
-            if str(target_id_1) in stalk_cfg:
-                ch = self.bot.get_channel(stalk_cfg[str(target_id_1)])
-                if ch: await ch.send(embed=embed)
-                    
-            if target_id_2 and str(target_id_2) in stalk_cfg:
-                ch = self.bot.get_channel(stalk_cfg[str(target_id_2)])
-                if ch: await ch.send(embed=embed)
-        except Exception as e:
-            if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[route_stalk] {e}")
+        urls = set()
+        
+        targets = [str(target_id_1), str(target_id_2), str(target_id_3)]
+        for t in targets:
+            if t in stalk_cfg and isinstance(stalk_cfg[t], str) and "http" in stalk_cfg[t]:
+                urls.add(stalk_cfg[t])
+
+        if not urls: return
+
+        async with aiohttp.ClientSession() as session:
+            for url in urls:
+                try:
+                    webhook = discord.Webhook.from_url(url, session=session)
+                    await webhook.send(embed=embed)
+                except Exception as e:
+                    if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[route_stalk webhook] {e}")
 
     @commands.command()
     async def logsetup(self, ctx, category: str, url: str):
@@ -251,7 +257,7 @@ class Logging(commands.Cog):
         if before.id != self.bot.user.id: return
         
         if before.nick != after.nick:
-            embed = discord.Embed(title=f"{self.bot.custom_emojis.get('log_nick', '')} Nickname Changed", color=0x00aaff)
+            embed = discord.Embed(title=f"{self.bot.custom_emojis.get('log_nick', '')} My Nickname Changed", color=0x00aaff)
             embed.add_field(name="Server", value=after.guild.name, inline=False)
             embed.add_field(name="Before", value=before.nick or "None", inline=True)
             embed.add_field(name="After", value=after.nick or "None", inline=True)
@@ -273,8 +279,10 @@ class Logging(commands.Cog):
     async def on_message(self, message):
         if message.author.id == self.bot.user.id: return
         
+        guild_id = message.guild.id if message.guild else None
         stalk_cfg = self.bot.config.get("stalk", {})
-        if str(message.author.id) in stalk_cfg or str(message.channel.id) in stalk_cfg:
+        
+        if str(message.author.id) in stalk_cfg or str(message.channel.id) in stalk_cfg or str(guild_id) in stalk_cfg:
             embed = discord.Embed(title=f"{self.bot.custom_emojis.get('log_msg_sent', '')} Message Sent", color=0x36393f)
             embed.add_field(name="Sender", value=f"{message.author} (`{message.author.id}`)", inline=False)
             loc = f"<#{message.channel.id}> in **{message.guild.name}**" if message.guild else "Direct Message"
@@ -283,7 +291,7 @@ class Logging(commands.Cog):
             if message.attachments:
                 img_url = next((a.url for a in message.attachments if "image" in str(a.content_type)), None)
                 if img_url: embed.set_image(url=img_url)
-            await self.route_stalk(message.author.id, message.channel.id, embed)
+            await self.route_stalk(message.author.id, message.channel.id, guild_id, embed)
         
         if self.bot.user in message.mentions:
             embed = discord.Embed(title=f"{self.bot.custom_emojis.get('log_mention', '')} Mention Received", color=0xffff00)
@@ -323,7 +331,10 @@ class Logging(commands.Cog):
             img_url = next((a.url for a in message.attachments if "image" in str(a.content_type)), None)
             if img_url: embed.set_image(url=img_url)
 
-        await self.route_stalk(message.author.id, message.channel.id, embed)
+        guild_id = message.guild.id if message.guild else None
+        stalk_cfg = self.bot.config.get("stalk", {})
+        if str(message.author.id) in stalk_cfg or str(message.channel.id) in stalk_cfg or str(guild_id) in stalk_cfg:
+            await self.route_stalk(message.author.id, message.channel.id, guild_id, embed)
         
         is_ghost_ping = self.bot.user in message.mentions
         if is_ghost_ping: 
@@ -347,7 +358,10 @@ class Logging(commands.Cog):
             img_url = next((a.url for a in before.attachments if "image" in str(a.content_type)), None)
             if img_url: embed.set_image(url=img_url)
 
-        await self.route_stalk(before.author.id, before.channel.id, embed)
+        guild_id = before.guild.id if before.guild else None
+        stalk_cfg = self.bot.config.get("stalk", {})
+        if str(before.author.id) in stalk_cfg or str(before.channel.id) in stalk_cfg or str(guild_id) in stalk_cfg:
+            await self.route_stalk(before.author.id, before.channel.id, guild_id, embed)
         
         if before.guild is None:
             await self.send_log("edits", embed)
