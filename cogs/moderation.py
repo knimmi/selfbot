@@ -9,6 +9,9 @@ class Moderation(commands.Cog):
         if "honeypots" not in self.bot.config:
             self.bot.config["honeypots"] = {}
 
+    def log_err(self, ctx, e):
+        if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[{ctx.command.name}] {e}")
+
     def save_config(self):
         with open("config.json", "w", encoding="utf-8") as f:
             json.dump(self.bot.config, f, indent=4)
@@ -16,13 +19,10 @@ class Moderation(commands.Cog):
     @commands.command()
     @commands.has_permissions(administrator=True)
     async def honeypot(self, ctx, channel: discord.TextChannel = None):
-        """Toggles a channel as a honeypot. Anyone who types in it gets banned and their 24h history wiped."""
         try: await ctx.message.delete()
         except: pass
-        
         target = channel or ctx.channel
         guild_id = str(ctx.guild.id)
-        
         if guild_id in self.bot.config["honeypots"] and self.bot.config["honeypots"][guild_id] == target.id:
             del self.bot.config["honeypots"][guild_id]
             self.save_config()
@@ -30,7 +30,7 @@ class Moderation(commands.Cog):
         else:
             self.bot.config["honeypots"][guild_id] = target.id
             self.save_config()
-            await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Honeypot active in {target.mention}**\nAnyone speaking here will be banned automatically.")
+            await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Honeypot active in {target.mention}**")
 
     @commands.command()
     @commands.has_permissions(ban_members=True)
@@ -38,8 +38,10 @@ class Moderation(commands.Cog):
         try: await ctx.message.delete()
         except: pass
         guild = self.bot.get_guild(srv_id) if srv_id else ctx.guild
-        await guild.ban(user)
-        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} Banned {user.name} from {guild.name}")
+        try:
+            await guild.ban(user)
+            await ctx.send(f"{self.bot.custom_emojis.get('check', '')} Banned {user.name} from {guild.name}")
+        except Exception as e: self.log_err(ctx, e)
 
     @commands.command()
     @commands.has_permissions(kick_members=True)
@@ -47,8 +49,10 @@ class Moderation(commands.Cog):
         try: await ctx.message.delete()
         except: pass
         guild = self.bot.get_guild(srv_id) if srv_id else ctx.guild
-        await guild.kick(user)
-        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} Kicked {user.name} from {guild.name}")
+        try:
+            await guild.kick(user)
+            await ctx.send(f"{self.bot.custom_emojis.get('check', '')} Kicked {user.name} from {guild.name}")
+        except Exception as e: self.log_err(ctx, e)
 
     @commands.command()
     @commands.has_permissions(ban_members=True)
@@ -56,8 +60,10 @@ class Moderation(commands.Cog):
         try: await ctx.message.delete()
         except: pass
         guild = self.bot.get_guild(srv_id) if srv_id else ctx.guild
-        await guild.unban(user)
-        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} Unbanned {user.name} in {guild.name}")
+        try:
+            await guild.unban(user)
+            await ctx.send(f"{self.bot.custom_emojis.get('check', '')} Unbanned {user.name} in {guild.name}")
+        except Exception as e: self.log_err(ctx, e)
 
     @commands.command()
     @commands.has_permissions(manage_channels=True)
@@ -65,9 +71,11 @@ class Moderation(commands.Cog):
         try: await ctx.message.delete()
         except: pass
         ch = channel or ctx.channel
-        new_ch = await ch.clone()
-        await ch.delete()
-        await new_ch.send(f"{self.bot.custom_emojis.get('check', '')} Channel nuked!")
+        try:
+            new_ch = await ch.clone()
+            await ch.delete()
+            await new_ch.send(f"{self.bot.custom_emojis.get('check', '')} Channel nuked!")
+        except Exception as e: self.log_err(ctx, e)
 
     @commands.command()
     async def nukesrv(self, ctx, srv_id: int = None):
@@ -77,42 +85,52 @@ class Moderation(commands.Cog):
         if not guild.me.guild_permissions.administrator: return
         for ch in guild.channels:
             try: await ch.delete()
-            except: pass
+            except Exception as e:
+                if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[nukesrv] Ch delete failed: {e}")
         for _ in range(18):
             try: await guild.create_text_channel('nuked-by-Knimmi')
-            except: pass
+            except Exception as e:
+                if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[nukesrv] Ch create failed: {e}")
 
     @commands.command()
     async def hide(self, ctx, channel: discord.TextChannel = None):
         try: await ctx.message.delete()
         except: pass
         ch = channel or ctx.channel
-        await ch.set_permissions(ctx.guild.default_role, view_channel=False)
-        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} {ch.mention} hidden.")
+        try:
+            await ch.set_permissions(ctx.guild.default_role, view_channel=False)
+            await ctx.send(f"{self.bot.custom_emojis.get('check', '')} {ch.mention} hidden.")
+        except Exception as e: self.log_err(ctx, e)
 
     @commands.command()
     async def unhide(self, ctx, channel: discord.TextChannel = None):
         try: await ctx.message.delete()
         except: pass
         ch = channel or ctx.channel
-        await ch.set_permissions(ctx.guild.default_role, view_channel=True)
-        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} {ch.mention} visible.")
+        try:
+            await ch.set_permissions(ctx.guild.default_role, view_channel=True)
+            await ctx.send(f"{self.bot.custom_emojis.get('check', '')} {ch.mention} visible.")
+        except Exception as e: self.log_err(ctx, e)
 
     @commands.command()
     async def lock(self, ctx, channel: discord.TextChannel = None):
         try: await ctx.message.delete()
         except: pass
         ch = channel or ctx.channel
-        await ch.set_permissions(ctx.guild.default_role, send_messages=False)
-        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} {ch.mention} locked.")
+        try:
+            await ch.set_permissions(ctx.guild.default_role, send_messages=False)
+            await ctx.send(f"{self.bot.custom_emojis.get('check', '')} {ch.mention} locked.")
+        except Exception as e: self.log_err(ctx, e)
 
     @commands.command()
     async def unlock(self, ctx, channel: discord.TextChannel = None):
         try: await ctx.message.delete()
         except: pass
         ch = channel or ctx.channel
-        await ch.set_permissions(ctx.guild.default_role, send_messages=True)
-        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} {ch.mention} unlocked.")
+        try:
+            await ch.set_permissions(ctx.guild.default_role, send_messages=True)
+            await ctx.send(f"{self.bot.custom_emojis.get('check', '')} {ch.mention} unlocked.")
+        except Exception as e: self.log_err(ctx, e)
 
     @commands.command()
     @commands.has_permissions(manage_channels=True)
@@ -120,8 +138,10 @@ class Moderation(commands.Cog):
         try: await ctx.message.delete()
         except: pass
         ch = channel or ctx.channel
-        await ch.edit(name=name)
-        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} Channel renamed to `{name}`")
+        try:
+            await ch.edit(name=name)
+            await ctx.send(f"{self.bot.custom_emojis.get('check', '')} Channel renamed to `{name}`")
+        except Exception as e: self.log_err(ctx, e)
 
     @commands.command()
     @commands.has_permissions(manage_channels=True)
@@ -130,8 +150,10 @@ class Moderation(commands.Cog):
         except: pass
         cat = category or ctx.channel.category
         if cat:
-            await cat.edit(name=name)
-            await ctx.send(f"{self.bot.custom_emojis.get('check', '')} Category renamed to `{name}`")
+            try:
+                await cat.edit(name=name)
+                await ctx.send(f"{self.bot.custom_emojis.get('check', '')} Category renamed to `{name}`")
+            except Exception as e: self.log_err(ctx, e)
 
     @commands.command()
     @commands.has_permissions(manage_channels=True)
@@ -140,36 +162,43 @@ class Moderation(commands.Cog):
         except: pass
         cat = category or ctx.channel.category
         if cat:
-            await cat.delete()
-            await ctx.send(f"{self.bot.custom_emojis.get('check', '')} Category deleted.")
+            try:
+                await cat.delete()
+                await ctx.send(f"{self.bot.custom_emojis.get('check', '')} Category deleted.")
+            except Exception as e: self.log_err(ctx, e)
 
     @commands.command()
     async def chnldel(self, ctx, channel: discord.TextChannel = None):
         try: await ctx.message.delete()
         except: pass
         ch = channel or ctx.channel
-        await ch.delete()
+        try: await ch.delete()
+        except Exception as e: self.log_err(ctx, e)
 
     @commands.command()
     async def roledel(self, ctx, role_id: int):
         try: await ctx.message.delete()
         except: pass
         role = ctx.guild.get_role(role_id)
-        if role: await role.delete()
+        if role:
+            try: await role.delete()
+            except Exception as e: self.log_err(ctx, e)
 
     @commands.command()
     async def slow(self, ctx, seconds: int, channel: discord.TextChannel = None):
         try: await ctx.message.delete()
         except: pass
         ch = channel or ctx.channel
-        await ch.edit(slowmode_delay=seconds)
+        try: await ch.edit(slowmode_delay=seconds)
+        except Exception as e: self.log_err(ctx, e)
 
     @commands.command()
     async def unslow(self, ctx, channel: discord.TextChannel = None):
         try: await ctx.message.delete()
         except: pass
         ch = channel or ctx.channel
-        await ch.edit(slowmode_delay=0)
+        try: await ch.edit(slowmode_delay=0)
+        except Exception as e: self.log_err(ctx, e)
 
     @commands.command()
     async def steal(self, ctx, emoji: discord.PartialEmoji, srv_id: int = None):
@@ -184,23 +213,23 @@ class Moderation(commands.Cog):
                         new_e = await guild.create_custom_emoji(name=emoji.name, image=img)
                         await ctx.send(f"{self.bot.custom_emojis.get('check', '')} Stole {new_e} to {guild.name}")
         except Exception as e:
+            self.log_err(ctx, e)
             await ctx.send(f"Error: {e}")
 
     @commands.command()
     async def demoji(self, ctx, emoji: discord.Emoji):
         try: await ctx.message.delete()
         except: pass
-        await emoji.delete()
+        try: await emoji.delete()
+        except Exception as e: self.log_err(ctx, e)
 
     @commands.command()
     async def mod(self, ctx, trigger: str, action: str, srv_id: int = None):
         try: await ctx.message.delete()
         except: pass
         guild = self.bot.get_guild(srv_id) if srv_id else ctx.guild
-        if "auto_mod" not in self.bot.config:
-            self.bot.config["auto_mod"] = {}
-        if str(guild.id) not in self.bot.config["auto_mod"]:
-            self.bot.config["auto_mod"][str(guild.id)] = {}
+        if "auto_mod" not in self.bot.config: self.bot.config["auto_mod"] = {}
+        if str(guild.id) not in self.bot.config["auto_mod"]: self.bot.config["auto_mod"][str(guild.id)] = {}
         
         self.bot.config["auto_mod"][str(guild.id)][trigger.lower()] = action.lower()
         self.save_config()
@@ -232,16 +261,19 @@ class Moderation(commands.Cog):
         
         for channel in target.channels:
             try: await channel.delete()
-            except: pass
+            except Exception as e: 
+                if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[csrv] Del Ch: {e}")
         for role in target.roles:
             if role != target.default_role and not role.managed:
                 try: await role.delete()
-                except: pass
+                except Exception as e: 
+                    if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[csrv] Del Role: {e}")
 
         for role in reversed(source.roles):
             if role != source.default_role and not role.managed:
                 try: await target.create_role(name=role.name, color=role.color, permissions=role.permissions, hoist=role.hoist)
-                except: pass
+                except Exception as e: 
+                    if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[csrv] Add Role: {e}")
 
         for category in source.categories:
             try:
@@ -251,7 +283,8 @@ class Moderation(commands.Cog):
                         await target.create_text_channel(name=channel.name, category=new_cat)
                     elif isinstance(channel, discord.VoiceChannel):
                         await target.create_voice_channel(name=channel.name, category=new_cat)
-            except: pass
+            except Exception as e: 
+                if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[csrv] Add Cat/Ch: {e}")
 
         await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Server Clone Complete.**")
 
@@ -272,7 +305,8 @@ class Moderation(commands.Cog):
                 elif action == "remove" and role in member.roles:
                     await member.remove_roles(role)
                     count += 1
-            except: pass
+            except Exception as e:
+                if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[massrole] Failed on {member}: {e}")
         await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Massrole:** {action}ed `{role.name}` for `{count}` users.")
 
     @commands.command()
@@ -285,38 +319,39 @@ class Moderation(commands.Cog):
             try:
                 await ctx.guild.unban(ban_entry.user)
                 count += 1
-            except: pass
+            except Exception as e:
+                if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[massunban] Failed on {ban_entry.user}: {e}")
         await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Pardoned {count} users.**")
 
     @commands.command()
     async def transcript(self, ctx, limit: int):
         try: await ctx.message.delete()
         except: pass
-        messages = [msg async for msg in ctx.channel.history(limit=limit)]
-        loc = f"DM with {ctx.channel.recipient}" if isinstance(ctx.channel, discord.DMChannel) else f"#{ctx.channel.name}"
-        html = f"<html><body><h1>Transcript for {loc}</h1><div class='messages'>"
-        for msg in reversed(messages):
-            html += f"<div><b>{msg.author}</b> [{msg.created_at}]: {msg.content}</div>"
-        html += "</div></body></html>"
-        with open("transcript.html", "w", encoding="utf-8") as f:
-            f.write(html)
-        await ctx.send("Transcript:", file=discord.File("transcript.html"))
+        try:
+            messages = [msg async for msg in ctx.channel.history(limit=limit)]
+            loc = f"DM with {ctx.channel.recipient}" if isinstance(ctx.channel, discord.DMChannel) else f"#{ctx.channel.name}"
+            html = f"<html><body><h1>Transcript for {loc}</h1><div class='messages'>"
+            for msg in reversed(messages):
+                html += f"<div><b>{msg.author}</b> [{msg.created_at}]: {msg.content}</div>"
+            html += "</div></body></html>"
+            with open("transcript.html", "w", encoding="utf-8") as f:
+                f.write(html)
+            await ctx.send("Transcript:", file=discord.File("transcript.html"))
+        except Exception as e: self.log_err(ctx, e)
 
     @commands.Cog.listener()
     async def on_message(self, message):
         if message.author.bot or message.author.id == self.bot.user.id or not message.guild:
             return
 
-        # 1. Spam Honeypot Check
         honeypot_target = self.bot.config.get("honeypots", {}).get(str(message.guild.id))
         if honeypot_target and message.channel.id == honeypot_target:
             try:
-                # 86400 seconds = 24 hours of message history deletion
                 await message.guild.ban(message.author, delete_message_seconds=86400, reason="Triggered Spam Honeypot")
-            except: pass
+            except Exception as e:
+                if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[Honeypot] Ban Failed on {message.author}: {e}")
             return
 
-        # 2. Keyword AutoMod Check
         mod_data = self.bot.config.get("auto_mod", {}).get(str(message.guild.id), {})
         if mod_data:
             content = message.content.lower()
@@ -324,13 +359,16 @@ class Moderation(commands.Cog):
                 if trigger in content:
                     if action == "delete":
                         try: await message.delete()
-                        except: pass
+                        except Exception as e:
+                            if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[AutoMod] Del Failed: {e}")
                     elif action == "ban":
                         try: await message.guild.ban(message.author, reason="AutoMod")
-                        except: pass
+                        except Exception as e:
+                            if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[AutoMod] Ban Failed: {e}")
                     elif action == "timeout":
                         try: await message.author.timeout(discord.utils.utcnow() + discord.utils.timedelta(minutes=10))
-                        except: pass
+                        except Exception as e:
+                            if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[AutoMod] Timeout Failed: {e}")
 
 async def setup(bot):
     await bot.add_cog(Moderation(bot))

@@ -96,8 +96,8 @@ class Reminders(commands.Cog):
                     if not ch:
                         ch = await self.bot.fetch_channel(r_data["channel_id"])
                     await ch.send(f"{rem_emoji} **REMINDER:** {r_data['message']}")
-                except:
-                    pass
+                except Exception as e:
+                    if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[Reminder Task] Failed to send {r_id}: {e}")
                 to_delete.append(r_id)
 
         if to_delete:

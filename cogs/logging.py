@@ -13,14 +13,18 @@ class Logging(commands.Cog):
         if "keywords" not in self.bot.config:
             self.bot.config["keywords"] = []
 
+    def log_err(self, ctx, e):
+        if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[{ctx.command.name}] {e}")
+
     def save_config(self):
-        with open("config.json", "w", encoding="utf-8") as f:
-            json.dump(self.bot.config, f, indent=4)
+        try:
+            with open("config.json", "w", encoding="utf-8") as f:
+                json.dump(self.bot.config, f, indent=4)
+        except Exception as e:
+            if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[save_config] {e}")
 
     async def send_log(self, category: str, embed: discord.Embed):
-        if not self.bot.config["log_toggles"].get(category, True):
-            return
-            
+        if not self.bot.config["log_toggles"].get(category, True): return
         url = self.bot.config["webhooks"].get(category)
         if not url: return
 
@@ -28,107 +32,123 @@ class Logging(commands.Cog):
             try:
                 webhook = discord.Webhook.from_url(url, session=session)
                 await webhook.send(embed=embed)
-            except: pass
+            except Exception as e:
+                if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[Webhook send_log - {category}] {e}")
 
     async def route_stalk(self, target_id_1, target_id_2, embed):
         stalk_cfg = self.bot.config.get("stalk", {})
-        
-        if str(target_id_1) in stalk_cfg:
-            ch = self.bot.get_channel(stalk_cfg[str(target_id_1)])
-            if ch:
-                try: await ch.send(embed=embed)
-                except: pass
-                
-        if target_id_2 and str(target_id_2) in stalk_cfg:
-            ch = self.bot.get_channel(stalk_cfg[str(target_id_2)])
-            if ch:
-                try: await ch.send(embed=embed)
-                except: pass
+        try:
+            if str(target_id_1) in stalk_cfg:
+                ch = self.bot.get_channel(stalk_cfg[str(target_id_1)])
+                if ch: await ch.send(embed=embed)
+                    
+            if target_id_2 and str(target_id_2) in stalk_cfg:
+                ch = self.bot.get_channel(stalk_cfg[str(target_id_2)])
+                if ch: await ch.send(embed=embed)
+        except Exception as e:
+            if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[route_stalk] {e}")
 
     @commands.command()
     async def logsetup(self, ctx, category: str, url: str):
         try: await ctx.message.delete()
         except: pass
-        cat = category.lower()
-        self.bot.config["webhooks"][cat] = url
-        self.bot.config["log_toggles"][cat] = True
-        self.save_config()
-        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Log Webhook set for:** `{cat}`")
+        try:
+            cat = category.lower()
+            self.bot.config["webhooks"][cat] = url
+            self.bot.config["log_toggles"][cat] = True
+            self.save_config()
+            await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Log Webhook set for:** `{cat}`")
+        except Exception as e: self.log_err(ctx, e)
 
     @commands.command()
     async def logtoggle(self, ctx, category: str):
         try: await ctx.message.delete()
         except: pass
-        cat = category.lower()
-        current_state = self.bot.config["log_toggles"].get(cat, True)
-        new_state = not current_state
-        self.bot.config["log_toggles"][cat] = new_state
-        self.save_config()
-        status = "ENABLED" if new_state else "DISABLED"
-        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Logging for `{cat}` is now {status}.**")
+        try:
+            cat = category.lower()
+            current_state = self.bot.config["log_toggles"].get(cat, True)
+            new_state = not current_state
+            self.bot.config["log_toggles"][cat] = new_state
+            self.save_config()
+            status = "ENABLED" if new_state else "DISABLED"
+            await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Logging for `{cat}` is now {status}.**")
+        except Exception as e: self.log_err(ctx, e)
 
     @commands.command()
     @commands.has_permissions(manage_channels=True, manage_webhooks=True)
     async def autolog(self, ctx):
         try: await ctx.message.delete()
         except: pass
-        await ctx.send(f"{self.bot.custom_emojis.get('loading', '')} **Setting up Auto Logs...**")
-        cat = await ctx.guild.create_category("BallzBot Logs")
-        categories = ["friends", "servers", "mentions", "sessions", "nickname", "keywords", "ghost_pings", "edits"]
-        for c in categories:
-            try:
-                ch = await ctx.guild.create_text_channel(c, category=cat)
-                wh = await ch.create_webhook(name=f"Logger - {c.capitalize()}")
-                self.bot.config["webhooks"][c] = wh.url
-                self.bot.config["log_toggles"][c] = True
-            except: pass
-        self.save_config()
-        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Auto Log Setup Complete.**")
+        try:
+            await ctx.send(f"{self.bot.custom_emojis.get('loading', '')} **Setting up Auto Logs...**")
+            cat = await ctx.guild.create_category("BallzBot Logs")
+            categories = ["friends", "servers", "mentions", "sessions", "nickname", "keywords", "ghost_pings", "edits"]
+            for c in categories:
+                try:
+                    ch = await ctx.guild.create_text_channel(c, category=cat)
+                    wh = await ch.create_webhook(name=f"Logger - {c.capitalize()}")
+                    self.bot.config["webhooks"][c] = wh.url
+                    self.bot.config["log_toggles"][c] = True
+                except Exception as e:
+                    if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[autolog] {c} setup failed: {e}")
+            self.save_config()
+            await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Auto Log Setup Complete.**")
+        except Exception as e: self.log_err(ctx, e)
 
     @commands.command()
     async def addkw(self, ctx, *, word: str):
         try: await ctx.message.delete()
         except: pass
-        w = word.lower()
-        if w not in self.bot.config["keywords"]:
-            self.bot.config["keywords"].append(w)
-            self.save_config()
-            await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Keyword Added:** `{word}`")
+        try:
+            w = word.lower()
+            if w not in self.bot.config["keywords"]:
+                self.bot.config["keywords"].append(w)
+                self.save_config()
+                await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Keyword Added:** `{word}`")
+        except Exception as e: self.log_err(ctx, e)
 
     @commands.command()
     async def delkw(self, ctx, *, word: str):
         try: await ctx.message.delete()
         except: pass
-        w = word.lower()
-        if w in self.bot.config["keywords"]:
-            self.bot.config["keywords"].remove(w)
-            self.save_config()
-            await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Keyword Removed:** `{word}`")
+        try:
+            w = word.lower()
+            if w in self.bot.config["keywords"]:
+                self.bot.config["keywords"].remove(w)
+                self.save_config()
+                await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Keyword Removed:** `{word}`")
+        except Exception as e: self.log_err(ctx, e)
 
     @commands.command()
     async def listkw(self, ctx):
         try: await ctx.message.delete()
         except: pass
-        kws = ", ".join(self.bot.config.get("keywords", []))
-        await ctx.send(f"**Tracked Keywords:** {kws or 'None'}")
+        try:
+            kws = ", ".join(self.bot.config.get("keywords", []))
+            await ctx.send(f"**Tracked Keywords:** {kws or 'None'}")
+        except Exception as e: self.log_err(ctx, e)
 
     @commands.Cog.listener()
     async def on_ready(self):
-        embed = discord.Embed(
-            title=f"{self.bot.custom_emojis.get('log_session', '✅')} BallzBot V2 Online",
-            description="Bot successfully connected to Gateway.",
-            color=0x00ff00
-        )
-        embed.add_field(name="Account Name", value=f"`{self.bot.user.name}`", inline=True)
-        embed.add_field(name="Prefix", value=f"`{self.bot.command_prefix}`", inline=True)
-        embed.add_field(name="Version", value="`V2.0`", inline=True)
-        embed.add_field(name="Friends", value=f"`{len(self.bot.user.friends)}`", inline=True)
-        embed.add_field(name="Servers", value=f"`{len(self.bot.guilds)}`", inline=True)
-        
-        if self.bot.user.display_avatar:
-            embed.set_thumbnail(url=self.bot.user.display_avatar.url)
+        try:
+            embed = discord.Embed(
+                title=f"{self.bot.custom_emojis.get('log_session', '')} BallzBot V2 Online",
+                description="Bot successfully connected to Gateway.",
+                color=0x00ff00
+            )
+            friends_count = len([r for r in self.bot.relationships if r.type == discord.RelationshipType.friend])
+            embed.add_field(name="Account Name", value=f"`{self.bot.user.name}`", inline=True)
+            embed.add_field(name="Prefix", value=f"`{self.bot.command_prefix}`", inline=True)
+            embed.add_field(name="Version", value="`V2.0`", inline=True)
+            embed.add_field(name="Friends", value=f"`{friends_count}`", inline=True)
+            embed.add_field(name="Servers", value=f"`{len(self.bot.guilds)}`", inline=True)
             
-        await self.send_log("sessions", embed)
+            if self.bot.user.display_avatar:
+                embed.set_thumbnail(url=self.bot.user.display_avatar.url)
+                
+            await self.send_log("sessions", embed)
+        except Exception as e:
+            if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[on_ready log] {e}")
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild):

@@ -11,7 +11,9 @@ class NSFW(commands.Cog):
             async with aiohttp.ClientSession() as s:
                 async with s.get(f"https://nekobot.xyz/api/image?type={endpoint}") as r:
                     if r.status == 200: return (await r.json()).get('message')
-        except: return None
+        except Exception as e: 
+            if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[NSFW API Error - {endpoint}] {e}")
+        return None
 
     @commands.command()
     async def hass(self, ctx):

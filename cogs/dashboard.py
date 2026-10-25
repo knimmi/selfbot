@@ -10,6 +10,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timezone
+from waitress import serve
 
 # --- WEB LOGGER SETUP ---
 werkzeug_logger = logging.getLogger('werkzeug')
@@ -321,7 +322,8 @@ def spotify_callback():
     return redirect('/')
 
 def run_app():
-    app.run(host='0.0.0.0', port=8080, debug=False, use_reloader=False)
+    werkzeug_logger.info("Starting production WSGI server on port 8080...")
+    serve(app, host='0.0.0.0', port=8080)
 
 class Dashboard(commands.Cog):
     def __init__(self, bot):

@@ -13,3 +13,4 @@ deep-translator
 qrcode==7.3
 Pillow
 spotipy
+waitress

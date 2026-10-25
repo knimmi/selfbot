@@ -19,7 +19,6 @@ class Spotify(commands.Cog):
                 client_id=client_id,
                 client_secret=client_secret,
                 redirect_uri="https://self.knimmi.de/callback",
-                # Added user-read-recently-played scope
                 scope="user-read-playback-state user-modify-playback-state user-top-read user-read-recently-played",
                 cache_path=".spotify_cache",
                 open_browser=False
@@ -27,6 +26,9 @@ class Spotify(commands.Cog):
             token = self.sp_oauth.get_cached_token()
             if token:
                 self.sp = spotipy.Spotify(auth_manager=self.sp_oauth)
+
+    def log_err(self, ctx, e):
+        if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[{ctx.command.name}] Spotify Error: {e}")
 
     @commands.command()
     async def spsetup(self, ctx):
@@ -48,6 +50,7 @@ class Spotify(commands.Cog):
             self.sp = spotipy.Spotify(auth_manager=self.sp_oauth)
             await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Spotify linked successfully.**")
         except Exception as e:
+            self.log_err(ctx, e)
             await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **Auth Failed:** {e}")
 
     @commands.command(aliases=["np"])
@@ -56,16 +59,19 @@ class Spotify(commands.Cog):
         except: pass
         if not self.sp: return await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **Run `.spsetup` first.**")
         
-        playback = await asyncio.to_thread(self.sp.current_playback)
-        if not playback or not playback.get('item'):
-            return await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **Nothing is playing on Spotify right now.**")
+        try:
+            playback = await asyncio.to_thread(self.sp.current_playback)
+            if not playback or not playback.get('item'):
+                return await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **Nothing is playing on Spotify right now.**")
 
-        title = playback['item']['name']
-        artist = playback['item']['artists'][0]['name']
-        album = playback['item']['album']['name']
-        url = playback['item']['external_urls']['spotify']
-        
-        await ctx.send(f"{self.bot.custom_emojis.get('spotify', '')} **Now Playing:** `{title}` by `{artist}`\n**Album:** `{album}`\n{url}")
+            title = playback['item']['name']
+            artist = playback['item']['artists'][0]['name']
+            album = playback['item']['album']['name']
+            url = playback['item']['external_urls']['spotify']
+            
+            await ctx.send(f"{self.bot.custom_emojis.get('spotify', '')} **Now Playing:** `{title}` by `{artist}`\n**Album:** `{album}`\n{url}")
+        except Exception as e:
+            self.log_err(ctx, e)
 
     @commands.command()
     async def skip(self, ctx):
@@ -76,6 +82,7 @@ class Spotify(commands.Cog):
             await asyncio.to_thread(self.sp.next_track)
             await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Skipped track.**")
         except Exception as e:
+            self.log_err(ctx, e)
             await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **Spotify Error:** {e}")
 
     @commands.command()
@@ -87,6 +94,7 @@ class Spotify(commands.Cog):
             await asyncio.to_thread(self.sp.pause_playback)
             await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Playback paused.**")
         except Exception as e:
+            self.log_err(ctx, e)
             await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **Spotify Error:** {e}")
 
     @commands.command(aliases=["splay"])
@@ -98,11 +106,11 @@ class Spotify(commands.Cog):
             await asyncio.to_thread(self.sp.start_playback)
             await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Playback resumed.**")
         except Exception as e:
+            self.log_err(ctx, e)
             await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **Spotify Error:** {e}")
 
     @commands.command()
     async def rt(self, ctx):
-        """Shows your 10 most recently played tracks."""
         try: await ctx.message.delete()
         except: pass
         if not self.sp: return
@@ -114,11 +122,11 @@ class Spotify(commands.Cog):
                 msg += f"`{idx + 1}.` **{track['name']}** - {track['artists'][0]['name']}\n"
             await ctx.send(msg)
         except Exception as e:
+            self.log_err(ctx, e)
             await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **Spotify Error:** {e}")
 
     @commands.command()
     async def tt(self, ctx):
-        """Shows your true top tracks with popularity scores."""
         try: await ctx.message.delete()
         except: pass
         if not self.sp: return
@@ -129,11 +137,11 @@ class Spotify(commands.Cog):
                 msg += f"`{idx + 1}.` **{track['name']}** - {track['artists'][0]['name']} *(Pop: {track['popularity']}/100)*\n"
             await ctx.send(msg)
         except Exception as e:
+            self.log_err(ctx, e)
             await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **Spotify Error:** {e}")
 
     @commands.command()
     async def ta(self, ctx):
-        """Shows your top 10 artists."""
         try: await ctx.message.delete()
         except: pass
         if not self.sp: return
@@ -144,11 +152,11 @@ class Spotify(commands.Cog):
                 msg += f"`{idx + 1}.` **{artist['name']}**\n"
             await ctx.send(msg)
         except Exception as e:
+            self.log_err(ctx, e)
             await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **Spotify Error:** {e}")
 
     @commands.command()
     async def tg(self, ctx):
-        """Calculates top genres based on your top 50 artists."""
         try: await ctx.message.delete()
         except: pass
         if not self.sp: return
@@ -167,37 +175,36 @@ class Spotify(commands.Cog):
                 msg += f"`{idx + 1}.` **{genre.title()}**\n"
             await ctx.send(msg)
         except Exception as e:
+            self.log_err(ctx, e)
             await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **Spotify Error:** {e}")
 
     @commands.command()
     async def lyrics(self, ctx):
-        """Fetches lyrics for the currently playing Spotify song."""
         try: await ctx.message.delete()
         except: pass
         if not self.sp: return await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **Run `.spsetup` first.**")
 
-        playback = await asyncio.to_thread(self.sp.current_playback)
-        if not playback or not playback.get('item'):
-            return await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **Nothing is playing.**")
+        try:
+            playback = await asyncio.to_thread(self.sp.current_playback)
+            if not playback or not playback.get('item'):
+                return await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **Nothing is playing.**")
 
-        title = playback['item']['name']
-        artist = playback['item']['artists'][0]['name']
-        
-        async with aiohttp.ClientSession() as session:
-            try:
+            title = playback['item']['name']
+            artist = playback['item']['artists'][0]['name']
+            
+            async with aiohttp.ClientSession() as session:
                 async with session.get(f"https://some-random-api.com/lyrics?title={title} {artist}") as resp:
                     if resp.status == 200:
                         data = await resp.json()
                         lyrics = data.get("lyrics", "")
-                        
                         if len(lyrics) > 1900:
                             lyrics = lyrics[:1900] + "\n... (truncated)"
-                            
                         await ctx.send(f"**Lyrics for {title} by {artist}:**\n{lyrics}")
                     else:
                         await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **Lyrics not found for this track.**")
-            except:
-                await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **Lyrics API failed.**")
+        except Exception as e:
+            self.log_err(ctx, e)
+            await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **Lyrics API failed.**")
 
 async def setup(bot):
     await bot.add_cog(Spotify(bot))

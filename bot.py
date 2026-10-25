@@ -29,7 +29,6 @@ def load_json(filepath):
 config = load_json("config.json")
 custom_icons = load_json("emojis.json")
 
-# Ensure required keys exist
 config.setdefault("risk_mode", False)
 config.setdefault("vouch_channels", {})
 config.setdefault("auto_slash", {})
@@ -85,7 +84,6 @@ raj.bot_logger = bot_logger
 raj.remove_command("help")
 
 # --- GLOBAL RATE LIMITER (Protect Account from Spam Bans) ---
-# Allows 1 command every 1.5 seconds per user (you).
 raj._global_cooldown = commands.CooldownMapping.from_cooldown(1, 1.5, commands.BucketType.user)
 
 @raj.check

@@ -8,14 +8,19 @@ class Messages(commands.Cog):
         self.bot = bot
         self.ticket_greeter = {}
 
+    def log(self, ctx, e):
+        if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[{ctx.command.name}] {e}")
+
     @commands.command()
     async def spam(self, ctx, times: int, *, message: str):
         try: await ctx.message.delete()
         except: pass
         if not self.bot.check_risk(ctx): return
         for _ in range(times):
-            await ctx.send(message)
-            await asyncio.sleep(0.5)
+            try:
+                await ctx.send(message)
+                await asyncio.sleep(0.5)
+            except Exception as e: self.log(ctx, e)
 
     @commands.command(aliases=['purge'])
     async def clear(self, ctx, times: int):
@@ -27,7 +32,7 @@ class Messages(commands.Cog):
                     await msg.delete()
                     deleted += 1
                     await asyncio.sleep(0.3)
-                except: pass
+                except Exception as e: self.log(ctx, e)
 
     @commands.command()
     async def dm(self, ctx, user: discord.User, *, message: str):
@@ -37,6 +42,7 @@ class Messages(commands.Cog):
             await user.send(message)
             await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Successfully DM'd** {user.name}")
         except Exception as e:
+            self.log(ctx, e)
             await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **Failed to DM:** {e}")
 
     @commands.command()
@@ -49,18 +55,22 @@ class Messages(commands.Cog):
                 try:
                     await member.send(msg)
                     await asyncio.sleep(3)
-                except: pass
+                except Exception as e:
+                    if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[dmall] Failed for {member.name}: {e}")
 
     @commands.command(aliases=["massdmfrnds"])
     async def massdmfriends(self, ctx, *, message: str):
         try: await ctx.message.delete()
         except: pass
         if not self.bot.check_risk(ctx): return
-        for user in list(self.bot.user.friends):
+        
+        friends = [r.user for r in self.bot.relationships if r.type == discord.RelationshipType.friend]
+        for user in friends:
             try:
                 await user.send(message)
                 await asyncio.sleep(2)
-            except: pass
+            except Exception as e:
+                if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[massdmfriends] Failed for {user.name}: {e}")
 
     @commands.command()
     async def translate(self, ctx, *, text: str):
@@ -69,7 +79,8 @@ class Messages(commands.Cog):
         try:
             t = GoogleTranslator(source='auto', target='en').translate(text)
             await ctx.send(f"**Original:** {text}\n**Translated:** {t}")
-        except:
+        except Exception as e:
+            self.log(ctx, e)
             await ctx.send(f"{self.bot.custom_emojis.get('error', '')} Could not translate.")
 
     @commands.command()
@@ -94,7 +105,8 @@ class Messages(commands.Cog):
                 await asyncio.sleep(1)
                 try:
                     await channel.send(self.ticket_greeter[channel.category_id])
-                except: pass
+                except Exception as e:
+                    if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[ticket_greeter] Failed to send: {e}")
 
 async def setup(bot):
     await bot.add_cog(Messages(bot))
