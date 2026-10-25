@@ -29,6 +29,11 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
 limiter = Limiter(get_remote_address, app=app, default_limits=["200 per day", "50 per hour"], storage_uri="memory://")
 
+@app.after_request
+def log_web_traffic(response):
+    werkzeug_logger.info(f"{request.remote_addr} - - \"{request.method} {request.path} {request.environ.get('SERVER_PROTOCOL', 'HTTP/1.0')}\" {response.status_code} -")
+    return response
+
 bot_instance = None
 
 def get_tail(filepath, lines=100):
@@ -206,6 +211,18 @@ VIEW_CONFIG = """
             </label>
         </div>
         <div>
+            <label class="block text-gray-400 text-xs font-bold uppercase mb-2">Platform Spoofing</label>
+            <select name="platform" class="w-full p-3 bg-discord-dark text-white rounded border border-gray-700 focus:outline-none focus:border-discord-blurple">
+                <option value="pc" {% if config_data.get('platform') == 'pc' %}selected{% endif %}>PC / Desktop</option>
+                <option value="mobile" {% if config_data.get('platform') == 'mobile' %}selected{% endif %}>Mobile Android</option>
+                <option value="web" {% if config_data.get('platform') == 'web' %}selected{% endif %}>Web Browser</option>
+                <option value="ps5" {% if config_data.get('platform') == 'ps5' %}selected{% endif %}>PlayStation 5</option>
+                <option value="xbox" {% if config_data.get('platform') == 'xbox' %}selected{% endif %}>Xbox</option>
+                <option value="vr" {% if config_data.get('platform') == 'vr' %}selected{% endif %}>VR Headset</option>
+            </select>
+            <p class="text-xs text-gray-500 mt-2"><i class="fa-solid fa-info-circle mr-1"></i>Requires a Discord restart to apply.</p>
+        </div>
+        <div>
             <label class="block text-gray-400 text-xs font-bold uppercase mb-2">Static QR Code 1 (Link)</label>
             <input type="text" name="qr" value="{{ config_data.get('Qr', '') }}" class="w-full p-3 bg-discord-dark text-white rounded border border-gray-700 focus:outline-none focus:border-discord-blurple">
         </div>
@@ -213,7 +230,7 @@ VIEW_CONFIG = """
             <label class="block text-gray-400 text-xs font-bold uppercase mb-2">Static QR Code 2 (Link)</label>
             <input type="text" name="qr2" value="{{ config_data.get('Qr2', '') }}" class="w-full p-3 bg-discord-dark text-white rounded border border-gray-700 focus:outline-none focus:border-discord-blurple">
         </div>
-        <div class="md:col-span-2">
+        <div>
             <label class="block text-gray-400 text-xs font-bold uppercase mb-2">Vouch Server Link</label>
             <input type="text" name="server_link" value="{{ config_data.get('SERVER_Link', '') }}" class="w-full p-3 bg-discord-dark text-white rounded border border-gray-700 focus:outline-none focus:border-discord-blurple">
         </div>
@@ -276,6 +293,7 @@ def config_panel():
         if request.method == 'POST':
             bot_instance.config["prefix"] = request.form.get("prefix", ".")
             bot_instance.command_prefix = bot_instance.config["prefix"]
+            bot_instance.config["platform"] = request.form.get("platform", "pc")
             bot_instance.config["Qr"] = request.form.get("qr", "")
             bot_instance.config["Qr2"] = request.form.get("qr2", "")
             bot_instance.config["SERVER_Link"] = request.form.get("server_link", "")
@@ -305,7 +323,6 @@ def config_panel():
         error_msg = f"System Save Error: {str(e)}"
         werkzeug_logger.error(f"[Config Save Error] {e}")
 
-    # Ensure it prints valid JSON to the frontend
     emojis_json = json.dumps(bot_instance.custom_emojis, indent=4) if isinstance(bot_instance.custom_emojis, dict) else "{}"
     content = render_template_string(VIEW_CONFIG, config_data=bot_instance.config, emojis_json=emojis_json, success=success, error=error_msg)
     return render_layout("config", content)

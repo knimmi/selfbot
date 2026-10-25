@@ -127,7 +127,6 @@ class Config(commands.Cog):
 
     @commands.command()
     async def setapikey(self, ctx, *, new_val: str):
-        """Sets the Tatum API Key used for sending LTC."""
         try: await ctx.message.delete()
         except: pass
         try:
@@ -151,6 +150,50 @@ class Config(commands.Cog):
         try:
             self.update_config("spotify_client_secret", new_val.strip())
             await ctx.send(f"{self.bot.custom_emojis.get('check', '')} Spotify Client Secret updated.")
+        except Exception as e: self.log_err(ctx, e)
+
+    @commands.command()
+    async def setezkey(self, ctx, *, key: str):
+        try: await ctx.message.delete()
+        except: pass
+        try:
+            self.update_config("ez_key", key.strip())
+            await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **E-Z.GG API Key saved.**")
+        except Exception as e: self.log_err(ctx, e)
+
+    @commands.command()
+    async def gwaddbot(self, ctx, bot_id: str):
+        try: await ctx.message.delete()
+        except: pass
+        try:
+            if "giveaway" not in self.bot.config: 
+                self.bot.config["giveaway"] = {"enabled": False, "monitored_bots": [], "delay_min": 2.0, "delay_max": 8.0, "stats": {}}
+            if bot_id not in self.bot.config["giveaway"]["monitored_bots"]:
+                self.bot.config["giveaway"]["monitored_bots"].append(bot_id)
+                self.update_config("giveaway", self.bot.config["giveaway"])
+            await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Bot `{bot_id}` added to Giveaway Monitor.**")
+        except Exception as e: self.log_err(ctx, e)
+
+    @commands.command()
+    async def gwremovebot(self, ctx, bot_id: str):
+        try: await ctx.message.delete()
+        except: pass
+        try:
+            if "giveaway" in self.bot.config and bot_id in self.bot.config["giveaway"]["monitored_bots"]:
+                self.bot.config["giveaway"]["monitored_bots"].remove(bot_id)
+                self.update_config("giveaway", self.bot.config["giveaway"])
+                await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Bot `{bot_id}` removed from Giveaway Monitor.**")
+            else:
+                await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **Bot ID not found.**")
+        except Exception as e: self.log_err(ctx, e)
+
+    @commands.command()
+    async def setgwwebhook(self, ctx, url: str):
+        try: await ctx.message.delete()
+        except: pass
+        try:
+            self.update_config("gw_webhook", url.strip())
+            await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Giveaway Webhook saved.**")
         except Exception as e: self.log_err(ctx, e)
 
     @commands.command()

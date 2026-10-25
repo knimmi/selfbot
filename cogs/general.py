@@ -63,6 +63,10 @@ class General(commands.Cog):
 {e.get('config', '')} **Set AFK Msg** :- `.setafkmsg <msg>`
 {e.get('config', '')} **Set LTC Key** :- `.setltckey <ltc_key>`
 {e.get('config', '')} **Set Tatum API Key** :- `.setapikey <api_key>`
+{e.get('config', '')} **Set E-Z.GG Key** :- `.setezkey <key>`
+{e.get('config', '')} **Set GW Webhook** :- `.setgwwebhook <url>`
+{e.get('config', '')} **GW Add Bot** :- `.gwaddbot <bot_id>`
+{e.get('config', '')} **GW Remove Bot** :- `.gwremovebot <bot_id>`
 {e.get('config', '')} **Set Spotify Client** :- `.setspclient <client_id>`
 {e.get('config', '')} **Set Spotify Secret** :- `.setspsecret <secret>`
 {e.get('config', '')} **Set Dashboard Creds** :- `.setdashcreds <user> <pass>`
@@ -152,7 +156,8 @@ class General(commands.Cog):
 {e.get('auto', '')} **Auto Message** :- `.am <time> [chnl_id] <msg>`
 {e.get('auto', '')} **Stop Auto Message** :- `.stopam [chnl_id]`
 {e.get('auto', '')} **Auto Slash** :- `.as_ <bot_id> <chnl_id> <cmd> <time> [key=val]`
-{e.get('auto', '')} **Stop Auto Slash** :- `.asstop [chnl_id]`"""
+{e.get('auto', '')} **Stop Auto Slash** :- `.asstop [chnl_id]`
+{e.get('auto', '')} **Giveaway Joiner** :- `.gw [toggle/status]`"""
             elif "afk" in cat:
                 desc = f"""{e.get('crown', '')} **Afk Section** {e.get('crown', '')}
 {e.get('afk', '')} **Toggle AFK** :- `.afk [msg]`
@@ -165,7 +170,8 @@ class General(commands.Cog):
                 desc = f"""{e.get('crown', '')} **Image Section** {e.get('crown', '')}
 {e.get('image', '')} **Get Avatar** :- `.avatar <@user>`
 {e.get('image', '')} **Get Icon Of Server** :- `.icon`
-{e.get('image', '')} **Get Image** :- `.get_image <query>`"""
+{e.get('image', '')} **Get Image** :- `.get_image <query>`
+{e.get('image', '')} **EZ Upload** :- `.ezup` *(Requires attached file)*"""
             elif "mod" in cat:
                 desc = f"""{e.get('crown', '')} **Moderation Section** {e.get('crown', '')}
 {e.get('moderation', '')} **Ban / Kick** :- `.ban <user> [srv_id]` / `.kick <user> [srv_id]`
@@ -184,7 +190,8 @@ class General(commands.Cog):
 {e.get('moderation', '')} **Steal / Del Emoji** :- `.steal <emoji>` / `.demoji <emoji>`
 {e.get('moderation', '')} **AutoMod** :- `.mod <trigger> <action>` / `.delmod <trigger>`
 {e.get('moderation', '')} **Transcript** :- `.transcript <limit>`
-{e.get('moderation', '')} **Honeypot** :- `.honeypot [chnl_id]`"""
+{e.get('moderation', '')} **Honeypot** :- `.honeypot [chnl_id]`
+{e.get('moderation', '')} **Anti-Scam** :- `.antiscam [add/remove/list]`"""
             elif "fun" in cat:
                 desc = f"""{e.get('crown', '')} **Fun Section** {e.get('crown', '')}
 {e.get('fun', '')} **Gen Joke** :- `.joke`
@@ -269,7 +276,6 @@ class General(commands.Cog):
                           '.help image', '.help fun', '.help vc', '.help user', '.help nsfw', '.help log']
             for cat in categories:
                 await ctx.send(cat)
-                # Boosted sleep timer to clear the 1.5s global rate limit shield
                 await asyncio.sleep(1.6)
         except Exception as e: self.log_err(ctx, e)
 
