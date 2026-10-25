@@ -25,8 +25,6 @@ app = Flask(__name__)
 app.secret_key = os.urandom(24) 
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Lax')
 
-# --- PROXY FIX ---
-# Forces Flask to trust the X-Forwarded-For headers sent by NGINX
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
 limiter = Limiter(get_remote_address, app=app, default_limits=["200 per day", "50 per hour"], storage_uri="memory://")
@@ -34,8 +32,7 @@ limiter = Limiter(get_remote_address, app=app, default_limits=["200 per day", "5
 bot_instance = None
 
 def get_tail(filepath, lines=100):
-    if not os.path.exists(filepath):
-        return "No log file generated yet."
+    if not os.path.exists(filepath): return "No log file generated yet."
     with open(filepath, "r", encoding="utf-8") as f:
         return "".join(f.readlines()[-lines:])
 
@@ -193,6 +190,7 @@ VIEW_CONFIG = """
     <p class="text-gray-400 mt-2">Modify your runtime configurations. Settings save instantly to your config file.</p>
 </div>
 {% if success %}<div class="bg-discord-green text-black font-bold p-3 rounded mb-6"><i class="fa-solid fa-check-circle mr-2"></i>Configuration Saved Successfully.</div>{% endif %}
+{% if error %}<div class="bg-discord-red text-white font-bold p-3 rounded mb-6"><i class="fa-solid fa-triangle-exclamation mr-2"></i>{{ error }}</div>{% endif %}
 
 <form method="POST" class="bg-discord-sidebar p-6 rounded-lg border border-gray-800 shadow-md space-y-6">
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -272,29 +270,44 @@ def config_panel():
     if not session.get('logged_in'): return redirect('/login')
     
     success = False
-    if request.method == 'POST':
-        bot_instance.config["prefix"] = request.form.get("prefix", ".")
-        bot_instance.command_prefix = bot_instance.config["prefix"]
-        bot_instance.config["Qr"] = request.form.get("qr", "")
-        bot_instance.config["Qr2"] = request.form.get("qr2", "")
-        bot_instance.config["SERVER_Link"] = request.form.get("server_link", "")
-        bot_instance.config["risk_mode"] = request.form.get("risk_mode") == "on"
-        
-        with open("config.json", "w", encoding="utf-8") as f:
-            json.dump(bot_instance.config, f, indent=4)
+    error_msg = None
+    
+    try:
+        if request.method == 'POST':
+            bot_instance.config["prefix"] = request.form.get("prefix", ".")
+            bot_instance.command_prefix = bot_instance.config["prefix"]
+            bot_instance.config["Qr"] = request.form.get("qr", "")
+            bot_instance.config["Qr2"] = request.form.get("qr2", "")
+            bot_instance.config["SERVER_Link"] = request.form.get("server_link", "")
+            bot_instance.config["risk_mode"] = request.form.get("risk_mode") == "on"
             
-        try:
-            new_emojis = json.loads(request.form.get("emojis"))
-            bot_instance.custom_emojis.update(new_emojis)
-            with open("emojis.json", "w", encoding="utf-8") as f:
-                json.dump(bot_instance.custom_emojis, f, indent=4)
-        except Exception:
-            pass
+            with open("config.json", "w", encoding="utf-8") as f:
+                json.dump(bot_instance.config, f, indent=4)
+                
+            raw_emojis = request.form.get("emojis", "").strip()
+            if raw_emojis:
+                try:
+                    new_emojis = json.loads(raw_emojis)
+                    if isinstance(new_emojis, dict):
+                        if not isinstance(bot_instance.custom_emojis, dict):
+                            bot_instance.custom_emojis = {}
+                        bot_instance.custom_emojis.update(new_emojis)
+                        with open("emojis.json", "w", encoding="utf-8") as f:
+                            json.dump(bot_instance.custom_emojis, f, indent=4)
+                    else:
+                        error_msg = "Emojis field must be a valid JSON dictionary."
+                except json.JSONDecodeError as e:
+                    error_msg = f"Invalid JSON Formatting: {str(e)}"
             
-        success = True
+            if not error_msg:
+                success = True
+    except Exception as e:
+        error_msg = f"System Save Error: {str(e)}"
+        werkzeug_logger.error(f"[Config Save Error] {e}")
 
-    emojis_json = json.dumps(bot_instance.custom_emojis, indent=4)
-    content = render_template_string(VIEW_CONFIG, config_data=bot_instance.config, emojis_json=emojis_json, success=success)
+    # Ensure it prints valid JSON to the frontend
+    emojis_json = json.dumps(bot_instance.custom_emojis, indent=4) if isinstance(bot_instance.custom_emojis, dict) else "{}"
+    content = render_template_string(VIEW_CONFIG, config_data=bot_instance.config, emojis_json=emojis_json, success=success, error=error_msg)
     return render_layout("config", content)
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -328,7 +341,6 @@ def spotify_callback():
 
 def run_app():
     werkzeug_logger.info("Starting production WSGI server on port 8080...")
-    # By passing clear_untrusted_proxy_headers=False, Waitress accepts NGINX's X-Forwarded-For headers
     serve(app, host='0.0.0.0', port=8080, clear_untrusted_proxy_headers=False)
 
 class Dashboard(commands.Cog):
