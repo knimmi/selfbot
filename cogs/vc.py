@@ -77,7 +77,16 @@ class Voice(commands.Cog):
         try: await ctx.message.delete()
         except: pass
         try:
-            await self.bot.ws.send_as_json({"op": 4, "d": {"guild_id": str(ctx.guild.id), "channel_id": str(channel.id), "self_mute": False, "self_deaf": False}})
+            # Removed str() wrappers to send raw integer snowflakes
+            await self.bot.ws.send_as_json({
+                "op": 4, 
+                "d": {
+                    "guild_id": ctx.guild.id if ctx.guild else None, 
+                    "channel_id": channel.id, 
+                    "self_mute": False, 
+                    "self_deaf": False
+                }
+            })
             await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Joined** {channel.mention}")
         except Exception as e: self.log_err(ctx, e)
 
@@ -86,7 +95,15 @@ class Voice(commands.Cog):
         try: await ctx.message.delete()
         except: pass
         try:
-            await self.bot.ws.send_as_json({"op": 4, "d": {"guild_id": str(ctx.guild.id) if ctx.guild else None, "channel_id": None, "self_mute": False, "self_deaf": False}})
+            await self.bot.ws.send_as_json({
+                "op": 4, 
+                "d": {
+                    "guild_id": ctx.guild.id if ctx.guild else None, 
+                    "channel_id": None, 
+                    "self_mute": False, 
+                    "self_deaf": False
+                }
+            })
             await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Left VC**")
         except Exception as e: self.log_err(ctx, e)
 
@@ -102,9 +119,19 @@ class Voice(commands.Cog):
     async def vccam(self, ctx):
         try: await ctx.message.delete()
         except: pass
-        if not ctx.author.voice: return await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **You need to be in a VC first!**")
+        if not getattr(ctx.author, 'voice', None) or not ctx.author.voice.channel: 
+            return await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **You need to be in a VC first!**")
         try:
-            await self.bot.ws.send_as_json({"op": 4, "d": {"guild_id": str(ctx.guild.id) if ctx.guild else None, "channel_id": str(ctx.author.voice.channel.id), "self_mute": ctx.author.voice.self_mute, "self_deaf": ctx.author.voice.self_deaf, "self_video": True}})
+            await self.bot.ws.send_as_json({
+                "op": 4, 
+                "d": {
+                    "guild_id": ctx.guild.id if ctx.guild else None, 
+                    "channel_id": ctx.author.voice.channel.id, 
+                    "self_mute": ctx.author.voice.self_mute, 
+                    "self_deaf": ctx.author.voice.self_deaf, 
+                    "self_video": True
+                }
+            })
             await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Spoofing Camera in VC!**")
         except Exception as e: self.log_err(ctx, e)
 
@@ -112,9 +139,20 @@ class Voice(commands.Cog):
     async def vcstream(self, ctx):
         try: await ctx.message.delete()
         except: pass
-        if not ctx.author.voice: return await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **You need to be in a VC first!**")
+        if not getattr(ctx.author, 'voice', None) or not ctx.author.voice.channel: 
+            return await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **You need to be in a VC first!**")
         try:
-            await self.bot.ws.send_as_json({"op": 4, "d": {"guild_id": str(ctx.guild.id) if ctx.guild else None, "channel_id": str(ctx.author.voice.channel.id), "self_mute": ctx.author.voice.self_mute, "self_deaf": ctx.author.voice.self_deaf, "self_stream": True}})
+            await self.bot.ws.send_as_json({
+                "op": 4, 
+                "d": {
+                    "guild_id": ctx.guild.id if ctx.guild else None, 
+                    "channel_id": ctx.author.voice.channel.id, 
+                    "self_mute": ctx.author.voice.self_mute, 
+                    "self_deaf": ctx.author.voice.self_deaf, 
+                    "self_stream": True,
+                    "self_video": False
+                }
+            })
             await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Spoofing Stream (Live) in VC!**")
         except Exception as e: self.log_err(ctx, e)
 
