@@ -9,6 +9,7 @@ from flask import Flask, request, session, redirect, render_template_string
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.middleware.proxy_fix import ProxyFix
 from datetime import datetime, timezone
 from waitress import serve
 
@@ -23,6 +24,10 @@ werkzeug_logger.addHandler(web_handler)
 app = Flask(__name__)
 app.secret_key = os.urandom(24) 
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Lax')
+
+# --- PROXY FIX ---
+# Forces Flask to trust the X-Forwarded-For headers sent by NGINX
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
 limiter = Limiter(get_remote_address, app=app, default_limits=["200 per day", "50 per hour"], storage_uri="memory://")
 
@@ -323,7 +328,8 @@ def spotify_callback():
 
 def run_app():
     werkzeug_logger.info("Starting production WSGI server on port 8080...")
-    serve(app, host='0.0.0.0', port=8080)
+    # By passing clear_untrusted_proxy_headers=False, Waitress accepts NGINX's X-Forwarded-For headers
+    serve(app, host='0.0.0.0', port=8080, clear_untrusted_proxy_headers=False)
 
 class Dashboard(commands.Cog):
     def __init__(self, bot):
