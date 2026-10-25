@@ -6,6 +6,7 @@ import discord
 from discord.ext import commands
 import colorama
 from pystyle import Center, Colorate, Colors
+from discord.gateway import DiscordWebSocket
 
 colorama.init()
 
@@ -37,11 +38,42 @@ elif pref == "vr":
 elif pref == "web":
     spoof_kwargs = {"os": "Windows", "browser": "Chrome", "device": "Windows"}
 
+# --- GATEWAY MONKEYPATCH FOR PLATFORM SPOOFING ---
+# Intercepts the raw Discord WebSocket identify packet and forcefully injects our spoofed properties
+_original_send = DiscordWebSocket.send_as_json
+
+async def patched_send(self, data):
+    if data.get("op") == 2 and "d" in data and "properties" in data["d"]: # op: 2 is IDENTIFY
+        if spoof_kwargs:
+            props = data["d"]["properties"]
+            
+            # Apply modern platform properties
+            props["os"] = spoof_kwargs.get("os", props.get("os"))
+            props["browser"] = spoof_kwargs.get("browser", props.get("browser"))
+            props["device"] = spoof_kwargs.get("device", props.get("device"))
+            
+            # Apply legacy '$' prefixed properties (sometimes required by older Discord API versions)
+            props["$os"] = spoof_kwargs.get("os", props.get("$os", props.get("os")))
+            props["$browser"] = spoof_kwargs.get("browser", props.get("$browser", props.get("browser")))
+            props["$device"] = spoof_kwargs.get("device", props.get("$device", props.get("device")))
+            
+            # Strip out desktop-specific data (like Chrome version) if we are spoofing a console/mobile
+            if spoof_kwargs.get("browser") != "Chrome":
+                props.pop("browser_user_agent", None)
+                props.pop("browser_version", None)
+                props.pop("os_version", None)
+                
+    return await _original_send(self, data)
+
+# Apply the patch
+DiscordWebSocket.send_as_json = patched_send
+# -------------------------------------------------
+
 raj = commands.Bot(
     description="SELFBOT CREATED BY knimmi",
     command_prefix=config.get("prefix", "."),
     self_bot=True,
-    **spoof_kwargs
+    **spoof_kwargs # Kept as fallback in case library updates
 )
 
 # Global attributes attached to bot instance

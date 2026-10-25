@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 import json
+import asyncio
 
 class Vouch(commands.Cog):
     def __init__(self, bot):
@@ -95,8 +96,11 @@ class Vouch(commands.Cog):
         if str(message.channel.id) in self.bot.config.get("vouch_channels", {}):
             reaction_emoji = self.bot.custom_emojis.get("vouch_reaction")
             if reaction_emoji:
-                try: await message.add_reaction(reaction_emoji)
-                except Exception as e: print(f"Failed to react in vouch channel: {e}")
+                await asyncio.sleep(2.0)  # Artificial human delay prevents rate limit softbans
+                try: 
+                    await message.add_reaction(reaction_emoji)
+                except Exception as e: 
+                    print(f"Failed to react in vouch channel: {e}")
 
 async def setup(bot):
     await bot.add_cog(Vouch(bot))

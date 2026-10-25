@@ -6,10 +6,31 @@ import json
 class Moderation(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        if "honeypots" not in self.bot.config:
+            self.bot.config["honeypots"] = {}
 
     def save_config(self):
         with open("config.json", "w", encoding="utf-8") as f:
             json.dump(self.bot.config, f, indent=4)
+
+    @commands.command()
+    @commands.has_permissions(administrator=True)
+    async def honeypot(self, ctx, channel: discord.TextChannel = None):
+        """Toggles a channel as a honeypot. Anyone who types in it gets banned and their 24h history wiped."""
+        try: await ctx.message.delete()
+        except: pass
+        
+        target = channel or ctx.channel
+        guild_id = str(ctx.guild.id)
+        
+        if guild_id in self.bot.config["honeypots"] and self.bot.config["honeypots"][guild_id] == target.id:
+            del self.bot.config["honeypots"][guild_id]
+            self.save_config()
+            await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Honeypot disabled.**")
+        else:
+            self.bot.config["honeypots"][guild_id] = target.id
+            self.save_config()
+            await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Honeypot active in {target.mention}**\nAnyone speaking here will be banned automatically.")
 
     @commands.command()
     @commands.has_permissions(ban_members=True)
@@ -267,10 +288,35 @@ class Moderation(commands.Cog):
             except: pass
         await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Pardoned {count} users.**")
 
+    @commands.command()
+    async def transcript(self, ctx, limit: int):
+        try: await ctx.message.delete()
+        except: pass
+        messages = [msg async for msg in ctx.channel.history(limit=limit)]
+        loc = f"DM with {ctx.channel.recipient}" if isinstance(ctx.channel, discord.DMChannel) else f"#{ctx.channel.name}"
+        html = f"<html><body><h1>Transcript for {loc}</h1><div class='messages'>"
+        for msg in reversed(messages):
+            html += f"<div><b>{msg.author}</b> [{msg.created_at}]: {msg.content}</div>"
+        html += "</div></body></html>"
+        with open("transcript.html", "w", encoding="utf-8") as f:
+            f.write(html)
+        await ctx.send("Transcript:", file=discord.File("transcript.html"))
+
     @commands.Cog.listener()
     async def on_message(self, message):
         if message.author.bot or message.author.id == self.bot.user.id or not message.guild:
             return
+
+        # 1. Spam Honeypot Check
+        honeypot_target = self.bot.config.get("honeypots", {}).get(str(message.guild.id))
+        if honeypot_target and message.channel.id == honeypot_target:
+            try:
+                # 86400 seconds = 24 hours of message history deletion
+                await message.guild.ban(message.author, delete_message_seconds=86400, reason="Triggered Spam Honeypot")
+            except: pass
+            return
+
+        # 2. Keyword AutoMod Check
         mod_data = self.bot.config.get("auto_mod", {}).get(str(message.guild.id), {})
         if mod_data:
             content = message.content.lower()

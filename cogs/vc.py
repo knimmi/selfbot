@@ -61,8 +61,6 @@ class Voice(commands.Cog):
         if ctx.author.voice and member.voice and member.voice.channel == ctx.author.voice.channel:
             await member.move_to(channel)
 
-    # --- FIXED: JOIN AND LEAVE ---
-
     @commands.command()
     async def vcjoin(self, ctx, channel: discord.VoiceChannel):
         try: await ctx.message.delete()
@@ -93,30 +91,12 @@ class Voice(commands.Cog):
         })
         await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Left VC**")
 
-    # -----------------------------
-
     @commands.command()
     async def vclimit(self, ctx, limit: int, channel: discord.VoiceChannel = None):
         try: await ctx.message.delete()
         except: pass
         channel = channel or ctx.author.voice.channel
         await channel.edit(user_limit=limit)
-
-    @commands.command()
-    async def transcript(self, ctx, limit: int):
-        try: await ctx.message.delete()
-        except: pass
-        messages = [msg async for msg in ctx.channel.history(limit=limit)]
-        loc = f"DM with {ctx.channel.recipient}" if isinstance(ctx.channel, discord.DMChannel) else f"#{ctx.channel.name}"
-        html = f"<html><body><h1>Transcript for {loc}</h1><div class='messages'>"
-        for msg in reversed(messages):
-            html += f"<div><b>{msg.author}</b> [{msg.created_at}]: {msg.content}</div>"
-        html += "</div></body></html>"
-        with open("transcript.html", "w", encoding="utf-8") as f:
-            f.write(html)
-        await ctx.send("Transcript:", file=discord.File("transcript.html"))
-
-    # --- SPOOFING ---
 
     @commands.command()
     async def vccam(self, ctx):

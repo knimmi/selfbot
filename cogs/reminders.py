@@ -82,7 +82,7 @@ class Reminders(commands.Cog):
         else:
             await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **Reminder ID not found.**")
 
-    @tasks.loop(seconds=10)
+    @tasks.loop(seconds=3)
     async def reminder_loop(self):
         reminders = self.load_reminders()
         current_time = int(time.time())
@@ -93,10 +93,9 @@ class Reminders(commands.Cog):
             if current_time >= r_data["time"]:
                 try:
                     ch = self.bot.get_channel(r_data["channel_id"])
-                    if ch:
-                        await ch.send(f"{rem_emoji} **REMINDER:** {r_data['message']}")
-                    else:
-                        await self.bot.user.send(f"{rem_emoji} **REMINDER:** {r_data['message']}")
+                    if not ch:
+                        ch = await self.bot.fetch_channel(r_data["channel_id"])
+                    await ch.send(f"{rem_emoji} **REMINDER:** {r_data['message']}")
                 except:
                     pass
                 to_delete.append(r_id)

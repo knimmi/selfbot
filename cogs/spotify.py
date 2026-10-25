@@ -4,6 +4,7 @@ import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 import asyncio
 import aiohttp
+from collections import Counter
 
 class Spotify(commands.Cog):
     def __init__(self, bot):
@@ -18,18 +19,17 @@ class Spotify(commands.Cog):
                 client_id=client_id,
                 client_secret=client_secret,
                 redirect_uri="https://self.knimmi.de/callback",
-                scope="user-read-playback-state user-modify-playback-state user-top-read",
+                # Added user-read-recently-played scope
+                scope="user-read-playback-state user-modify-playback-state user-top-read user-read-recently-played",
                 cache_path=".spotify_cache",
                 open_browser=False
             )
-            # Auto-login if cache exists
             token = self.sp_oauth.get_cached_token()
             if token:
                 self.sp = spotipy.Spotify(auth_manager=self.sp_oauth)
 
     @commands.command()
     async def spsetup(self, ctx):
-        """Generates the Spotify login link for initial setup."""
         try: await ctx.message.delete()
         except: pass
         if not hasattr(self, "sp_oauth"):
@@ -40,7 +40,6 @@ class Spotify(commands.Cog):
 
     @commands.command()
     async def spauth(self, ctx, url: str):
-        """Completes the Spotify authentication."""
         try: await ctx.message.delete()
         except: pass
         try:
@@ -102,16 +101,70 @@ class Spotify(commands.Cog):
             await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **Spotify Error:** {e}")
 
     @commands.command()
+    async def rt(self, ctx):
+        """Shows your 10 most recently played tracks."""
+        try: await ctx.message.delete()
+        except: pass
+        if not self.sp: return
+        try:
+            results = await asyncio.to_thread(self.sp.current_user_recently_played, limit=10)
+            msg = f"**{self.bot.custom_emojis.get('spotify', '')} Recently Played:**\n"
+            for idx, item in enumerate(results['items']):
+                track = item['track']
+                msg += f"`{idx + 1}.` **{track['name']}** - {track['artists'][0]['name']}\n"
+            await ctx.send(msg)
+        except Exception as e:
+            await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **Spotify Error:** {e}")
+
+    @commands.command()
     async def tt(self, ctx):
-        """Shows your top 10 most played tracks."""
+        """Shows your true top tracks with popularity scores."""
         try: await ctx.message.delete()
         except: pass
         if not self.sp: return
         try:
             results = await asyncio.to_thread(self.sp.current_user_top_tracks, limit=10, time_range="short_term")
-            msg = f"**{self.bot.custom_emojis.get('spotify', '')} Your Top Tracks (Recent):**\n"
+            msg = f"**{self.bot.custom_emojis.get('spotify', '')} Top Tracks (Last 4 Weeks):**\n"
             for idx, track in enumerate(results['items']):
-                msg += f"`{idx + 1}.` **{track['name']}** - {track['artists'][0]['name']}\n"
+                msg += f"`{idx + 1}.` **{track['name']}** - {track['artists'][0]['name']} *(Pop: {track['popularity']}/100)*\n"
+            await ctx.send(msg)
+        except Exception as e:
+            await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **Spotify Error:** {e}")
+
+    @commands.command()
+    async def ta(self, ctx):
+        """Shows your top 10 artists."""
+        try: await ctx.message.delete()
+        except: pass
+        if not self.sp: return
+        try:
+            results = await asyncio.to_thread(self.sp.current_user_top_artists, limit=10, time_range="short_term")
+            msg = f"**{self.bot.custom_emojis.get('spotify', '')} Top Artists (Last 4 Weeks):**\n"
+            for idx, artist in enumerate(results['items']):
+                msg += f"`{idx + 1}.` **{artist['name']}**\n"
+            await ctx.send(msg)
+        except Exception as e:
+            await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **Spotify Error:** {e}")
+
+    @commands.command()
+    async def tg(self, ctx):
+        """Calculates top genres based on your top 50 artists."""
+        try: await ctx.message.delete()
+        except: pass
+        if not self.sp: return
+        try:
+            results = await asyncio.to_thread(self.sp.current_user_top_artists, limit=50, time_range="short_term")
+            genres = []
+            for artist in results['items']:
+                genres.extend(artist['genres'])
+            
+            if not genres:
+                return await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **Not enough data to calculate top genres.**")
+                
+            top_genres = Counter(genres).most_common(10)
+            msg = f"**{self.bot.custom_emojis.get('spotify', '')} Top Genres (Last 4 Weeks):**\n"
+            for idx, (genre, count) in enumerate(top_genres):
+                msg += f"`{idx + 1}.` **{genre.title()}**\n"
             await ctx.send(msg)
         except Exception as e:
             await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **Spotify Error:** {e}")
@@ -132,7 +185,6 @@ class Spotify(commands.Cog):
         
         async with aiohttp.ClientSession() as session:
             try:
-                # Uses Some-Random-API for lyrics scraping
                 async with session.get(f"https://some-random-api.com/lyrics?title={title} {artist}") as resp:
                     if resp.status == 200:
                         data = await resp.json()

@@ -103,25 +103,20 @@ class Config(commands.Cog):
         await ctx.send(f"{self.bot.custom_emojis.get('check', '')} LTC Private Key updated.")
 
     @commands.command()
-    async def setdashcreds(self, ctx, username: str, password: str):
-        """Changes the dashboard username and password. Example: .setdashcreds admin MySecretPass"""
+    async def setapikey(self, ctx, *, new_val: str):
+        """Sets the Tatum API Key used for sending LTC."""
         try: await ctx.message.delete()
         except: pass
-        
-        self.bot.config["dash_username"] = username
-        self.bot.config["dash_hash"] = generate_password_hash(password)
-        with open("config.json", "w", encoding="utf-8") as f:
-            json.dump(self.bot.config, f, indent=4)
-            
-        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Dashboard Credentials updated.**")
-        
+        self.update_config("apikey", new_val.strip())
+        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} Tatum API Key updated.")
+
     @commands.command()
     async def setspclient(self, ctx, *, new_val: str):
         """Sets the Spotify Client ID."""
         try: await ctx.message.delete()
         except: pass
         self.update_config("spotify_client_id", new_val.strip())
-        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Spotify Client ID updated.**")
+        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} Spotify Client ID updated.")
 
     @commands.command()
     async def setspsecret(self, ctx, *, new_val: str):
@@ -129,7 +124,17 @@ class Config(commands.Cog):
         try: await ctx.message.delete()
         except: pass
         self.update_config("spotify_client_secret", new_val.strip())
-        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Spotify Client Secret updated.**")
+        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} Spotify Client Secret updated.")
+
+    @commands.command()
+    async def setdashcreds(self, ctx, username: str, password: str):
+        try: await ctx.message.delete()
+        except: pass
+        self.bot.config["dash_username"] = username
+        self.bot.config["dash_hash"] = generate_password_hash(password)
+        with open("config.json", "w", encoding="utf-8") as f:
+            json.dump(self.bot.config, f, indent=4)
+        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Dashboard Credentials updated.**")
 
 async def setup(bot):
     await bot.add_cog(Config(bot))

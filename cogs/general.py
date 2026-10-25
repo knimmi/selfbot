@@ -52,11 +52,16 @@ class General(commands.Cog):
         elif "config" in cat:
             desc = f"""{e.get('crown', '')} **Config Section** {e.get('crown', '')}
 {e.get('config', '')} **Set QR Code** :- `.setqr <qr_link>`
+{e.get('config', '')} **Set QR Code 2** :- `.setqr2 <qr_link>`
 {e.get('config', '')} **Set Server Link** :- `.setsrvlink <server_link>`
 {e.get('config', '')} **Set User ID** :- `.setuserid [user]`
 {e.get('config', '')} **Set LTC Addy** :- `.setaddy <ltc_addy>`
 {e.get('config', '')} **Set LTC Addy 2** :- `.setaddy2 <ltc_addy>`
+{e.get('config', '')} **Set Binance ID** :- `.setbinid <binance_id>`
 {e.get('config', '')} **Set LTC Key** :- `.setltckey <ltc_key>`
+{e.get('config', '')} **Set Tatum API Key** :- `.setapikey <api_key>`
+{e.get('config', '')} **Set Spotify Client** :- `.setspclient <client_id>`
+{e.get('config', '')} **Set Spotify Secret** :- `.setspsecret <secret>`
 {e.get('config', '')} **Set Dashboard Creds** :- `.setdashcreds <user> <pass>`
 {e.get('config', '')} **Customise Emoji** :- `.emoji <name> <emoji>`
 {e.get('config', '')} **Toggle Risk Mode** :- `.risk`"""
@@ -75,19 +80,22 @@ class General(commands.Cog):
 {e.get('spotify', '')} **Skip Track** :- `.skip`
 {e.get('spotify', '')} **Pause Playback** :- `.pause`
 {e.get('spotify', '')} **Resume Playback** :- `.resume` (or `.play`)
+{e.get('spotify', '')} **Recent Tracks** :- `.rt`
 {e.get('spotify', '')} **Top Tracks** :- `.tt`
+{e.get('spotify', '')} **Top Artists** :- `.ta`
+{e.get('spotify', '')} **Top Genres** :- `.tg`
 {e.get('spotify', '')} **Track Lyrics** :- `.lyrics`
 {e.get('spotify', '')} **Setup Auth URL** :- `.spsetup`
 {e.get('spotify', '')} **Complete Auth** :- `.spauth <url>`"""
-        elif "reminders" in cat or "remind" in cat:
-            desc = f"""{e.get('crown', '')} **Reminders Section** {e.get('crown', '')}
-{e.get('remind', '')} **Set Reminder** :- `.remind <duration> <message>`
-{e.get('remind', '')} **List Reminders** :- `.reminders`
-{e.get('remind', '')} **Delete Reminder** :- `.delreminder <id>`"""
         elif "ticket" in cat:
             desc = f"""{e.get('crown', '')} **Ticket Section** {e.get('crown', '')}
-{e.get('ticket', '')} **Create Ticket** :- `.sc <category_id> <message>`
-{e.get('ticket', '')} **Close Ticket** :- `.stopsc <channel_id>`"""
+{e.get('ticket', '')} **Setup Ticket Panel** :- `.setupticket <channel>`
+{e.get('ticket', '')} **Set Ticket Reaction** :- `.streact <emoji>`
+{e.get('ticket', '')} **Set Support Role** :- `.strole <role_id>`
+{e.get('ticket', '')} **Set Log Channel** :- `.stlog <channel_id>`
+{e.get('ticket', '')} **Set Panel Message** :- `.stmsgsetup <msg>`
+{e.get('ticket', '')} **Set Inside Message** :- `.stmsginside <msg>`
+{e.get('ticket', '')} **Close Ticket** :- `.tclose`"""
         elif "crypto" in cat:
             desc = f"""{e.get('crown', '')} **Crypto Section** {e.get('crown', '')}
 {e.get('ltc', '')} **Send LTC** :- `.send <addy> <amount>`
@@ -109,8 +117,8 @@ class General(commands.Cog):
 {e.get('message', '')} **(Risk) Spam Msg** :- `.spam <amount> <msg>`
 {e.get('message', '')} **(Risk) Clear Msg** :- `.clear <amount>`
 {e.get('message', '')} **Direct Msg** :- `.dm <@user> <msg>`
-{e.get('message', '')} **Send Msg Ticket Create** :- `.sc <cg-id> <msg>`
-{e.get('message', '')} **Remove Msg Ticket Create** :- `.stopsc <cg-id>`
+{e.get('message', '')} **Send Ticket Greeter** :- `.sc <cg-id> <msg>`
+{e.get('message', '')} **Remove Ticket Greeter** :- `.stopsc <cg-id>`
 {e.get('message', '')} **Translate Msg** :- `.translate <msg>`
 {e.get('message', '')} **(Risk) Dm All In Server** :- `.dmall <msg>`
 {e.get('message', '')} **(Risk) Mass Dm Friends** :- `.massdmfriends <msg>`"""
@@ -133,15 +141,15 @@ class General(commands.Cog):
 {e.get('ltc', '')} **EUR To Ltc** :- `.e2l <eur amount>`"""
         elif "auto" in cat:
             desc = f"""{e.get('crown', '')} **Auto Sender Section** {e.get('crown', '')}
-{e.get('auto', '')} **Auto Respond** :- `.ar <trigger>, <response>`
-{e.get('auto', '')} **Remove Respond** :- `.removear <trigger>`
-{e.get('auto', '')} **Auto Respond List** :- `.arlist`
+{e.get('auto', '')} **Exact Auto Respond** :- `.ar <trigger>, <response>`
+{e.get('auto', '')} **Remove Exact** :- `.removear <trigger>`
+{e.get('auto', '')} **Regex Auto Respond** :- `.arr <regex>, <response>`
+{e.get('auto', '')} **Remove Regex** :- `.removearr <regex>`
+{e.get('auto', '')} **Auto React User** :- `.autoreact <@user> <emoji>`
 {e.get('auto', '')} **Auto Message** :- `.am <time> [chnl_id] <msg>`
 {e.get('auto', '')} **Stop Auto Message** :- `.stopam [chnl_id]`
-{e.get('auto', '')} **Auto Message List** :- `.amlist`
-{e.get('auto', '')} **Auto Slash** :- `.as <bot_id> <chnl_id> <cmd> <time> [key=val]`
-{e.get('auto', '')} **Stop Auto Slash** :- `.asstop [chnl_id]`
-{e.get('auto', '')} **Auto Slash List** :- `.aslist`"""
+{e.get('auto', '')} **Auto Slash** :- `.as_ <bot_id> <chnl_id> <cmd> <time> [key=val]`
+{e.get('auto', '')} **Stop Auto Slash** :- `.asstop [chnl_id]`"""
         elif "afk" in cat:
             desc = f"""{e.get('crown', '')} **Afk Section** {e.get('crown', '')}
 {e.get('afk', '')} **Toggle AFK** :- `.afk [msg]`
@@ -157,26 +165,23 @@ class General(commands.Cog):
 {e.get('image', '')} **Get Image** :- `.get_image <query>`"""
         elif "mod" in cat:
             desc = f"""{e.get('crown', '')} **Moderation Section** {e.get('crown', '')}
-{e.get('moderation', '')} **Ban** :- `.ban <user> [srv_id]`
-{e.get('moderation', '')} **Kick** :- `.kick <user> [srv_id]`
+{e.get('moderation', '')} **Ban / Kick** :- `.ban <user> [srv_id]` / `.kick <user> [srv_id]`
 {e.get('moderation', '')} **Unban** :- `.unban <user> [srv_id]`
+{e.get('moderation', '')} **Mass Unban** :- `.massunban`
+{e.get('moderation', '')} **Mass Role** :- `.massrole <add/remove> <role>`
 {e.get('moderation', '')} **Nuke Channel** :- `.nuke [chnl_id]`
 {e.get('moderation', '')} **Nuke Server** :- `.nukesrv [srv_id]`
-{e.get('moderation', '')} **Hide Channel** :- `.hide [chnl_id]`
-{e.get('moderation', '')} **Unhide Channel** :- `.unhide [chnl_id]`
-{e.get('moderation', '')} **Lock Channel** :- `.lock [chnl_id]`
-{e.get('moderation', '')} **Unlock Channel** :- `.unlock [chnl_id]`
-{e.get('moderation', '')} **Delete Channel** :- `.chnldel [chnl_id]`
-{e.get('moderation', '')} **Delete Role** :- `.roledel <role_id>`
-{e.get('moderation', '')} **Slowmode** :- `.slow <seconds> [chnl_id]`
-{e.get('moderation', '')} **Remove Slowmode** :- `.unslow [chnl_id]`
-{e.get('moderation', '')} **Create Channel** :- `.chnl <chnl-name>`
-{e.get('moderation', '')} **Create Role** :- `.role <role-name>`
+{e.get('moderation', '')} **Hide / Unhide** :- `.hide [chnl_id]` / `.unhide [chnl_id]`
+{e.get('moderation', '')} **Lock / Unlock** :- `.lock [chnl_id]` / `.unlock [chnl_id]`
+{e.get('moderation', '')} **Delete Channel / Role** :- `.chnldel [chnl_id]` / `.roledel <role_id>`
+{e.get('moderation', '')} **Rename Channel** :- `.rnchannel <name> [chnl_id]`
+{e.get('moderation', '')} **Rename / Del Category** :- `.rncategory <name>` / `.delcategory`
+{e.get('moderation', '')} **Slowmode** :- `.slow <seconds> [chnl_id]` / `.unslow`
 {e.get('moderation', '')} **Srv Clone** :- `.csrv <copy id> <target id>`
-{e.get('moderation', '')} **Steal Emoji** :- `.steal <emoji> [srv_id]`
-{e.get('moderation', '')} **Delete Emoji** :- `.demoji <emoji>`
-{e.get('moderation', '')} **AutoMod Add** :- `.mod <trigger> <delete/timeout/ban> [srv_id]`
-{e.get('moderation', '')} **AutoMod Del** :- `.delmod <trigger> [srv_id]`"""
+{e.get('moderation', '')} **Steal / Del Emoji** :- `.steal <emoji>` / `.demoji <emoji>`
+{e.get('moderation', '')} **AutoMod** :- `.mod <trigger> <action>` / `.delmod <trigger>`
+{e.get('moderation', '')} **Transcript** :- `.transcript <limit>`
+{e.get('moderation', '')} **Honeypot** :- `.honeypot [chnl_id]`"""
         elif "fun" in cat:
             desc = f"""{e.get('crown', '')} **Fun Section** {e.get('crown', '')}
 {e.get('fun', '')} **Gen Joke** :- `.joke`
@@ -203,8 +208,7 @@ class General(commands.Cog):
 {e.get('vc', '')} **Vc leave** :- `.vcleave`
 {e.get('vc', '')} **Vc Set Limit** :- `.vclimit <limit> <channel-id>`
 {e.get('vc', '')} **Vc Stream Spoof** :- `.vcstream`
-{e.get('vc', '')} **Vc Camera Spoof** :- `.vccam`
-{e.get('vc', '')} **Transcript** :- `.transcript <amt of msg>`"""
+{e.get('vc', '')} **Vc Camera Spoof** :- `.vccam`"""
         elif "user" in cat:
             desc = f"""{e.get('crown', '')} **User Section** {e.get('crown', '')}
 {e.get('user', '')} **Leave Server** :- `.lg [srv_id]`
@@ -217,7 +221,9 @@ class General(commands.Cog):
 {e.get('user', '')} **Set Bio** :- `.setbio <text>`
 {e.get('user', '')} **Set Pronouns** :- `.setpronouns <text>`
 {e.get('user', '')} **Set Display Name** :- `.setdisplayname <name>`
-{e.get('user', '')} **Set Presence** :- `.presence <online/idle/dnd/offline>`"""
+{e.get('user', '')} **Set Presence** :- `.presence <online/idle/dnd/offline>`
+{e.get('user', '')} **Stalk User/Channel** :- `.stalk <id>`
+{e.get('user', '')} **Mark All Read** :- `.readall`"""
         elif "nsfw" in cat:
             desc = f"""{e.get('crown', '')} **NSFW Section** {e.get('crown', '')}
 {e.get('nsfw', '')} **Hass** :- `.hass`
@@ -225,7 +231,9 @@ class General(commands.Cog):
 {e.get('nsfw', '')} **Boobs** :- `.boobs`
 {e.get('nsfw', '')} **lewdneko** :- `.lewdneko`
 {e.get('nsfw', '')} **Blowjob** :- `.blowjob`
-{e.get('nsfw', '')} **Hentai** :- `.hentai`"""
+{e.get('nsfw', '')} **Hentai** :- `.hentai`
+{e.get('nsfw', '')} **Gayporn** :- `.gayporn`
+{e.get('nsfw', '')} **Bo Sinn** :- `.bo_sinn`"""
         elif "vouch" in cat:
             desc = f"""{e.get('crown', '')} **Vouch Section** {e.get('crown', '')}
 {e.get('vouch', '')} **Setup Vouch Channel** :- `.setupvouch [chnl_id] <role>`
@@ -237,6 +245,7 @@ class General(commands.Cog):
             desc = f"""{e.get('crown', '')} **Logging Section** {e.get('crown', '')}
 {e.get('log', '')} **Auto Log Setup** :- `.autolog`
 {e.get('log', '')} **Set Webhook** :- `.logsetup <category> <url>`
+{e.get('log', '')} **Toggle Category** :- `.logtoggle <category>`
 *(Categories: friends, servers, mentions, sessions, guild_updates, keywords)*
 {e.get('log', '')} **Add Keyword** :- `.addkw <word>`
 {e.get('log', '')} **Remove Keyword** :- `.delkw <word>`
