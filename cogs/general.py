@@ -130,10 +130,10 @@ class General(commands.Cog):
 {e.get('status', '')} **Custom Status** :- `.status <custom text>`
 {e.get('status', '')} **Status Rotator** :- `.rotate <msg> / <msg> / <msg>`
 {e.get('status', '')} **Stop Rotator** :- `.stop_rotate`
-{e.get('status', '')} **Stream Status** :- `.stream <title> [img_url]`
-{e.get('status', '')} **Playing Status** :- `.play <title> [img_url]`
-{e.get('status', '')} **Watching Status** :- `.watching <title> [img_url]`
-{e.get('status', '')} **Listening Status** :- `.listening <title> [img_url]`
+{e.get('status', '')} **Stream Status** :- `.stream <title>`
+{e.get('status', '')} **Playing Status** :- `.play <title>`
+{e.get('status', '')} **Watching Status** :- `.watching <title>`
+{e.get('status', '')} **Listening Status** :- `.listening <title>`
 {e.get('status', '')} **Remove Status** :- `.stopactivity`"""
             elif "calc" in cat:
                 desc = f"""{e.get('crown', '')} **Calculate Section** {e.get('crown', '')}
@@ -220,7 +220,7 @@ class General(commands.Cog):
 {e.get('user', '')} **Delete All Friends** :- `.delallfriends`
 {e.get('user', '')} **Close DM** :- `.close [chnl_id]`
 {e.get('user', '')} **Close All Dms** :- `.closealldms`
-{e.get('user', '')} **Set Nickname** :- `.setnick [srv_id] <nickname>`
+{e.get('user', '')} **Set Nickname** :- `.setnick <nickname>`
 {e.get('user', '')} **Set Bio** :- `.setbio <text>`
 {e.get('user', '')} **Set Pronouns** :- `.setpronouns <text>`
 {e.get('user', '')} **Set Display Name** :- `.setdisplayname <name>`
@@ -269,7 +269,8 @@ class General(commands.Cog):
                           '.help image', '.help fun', '.help vc', '.help user', '.help nsfw', '.help log']
             for cat in categories:
                 await ctx.send(cat)
-                await asyncio.sleep(1.2)
+                # Boosted sleep timer to clear the 1.5s global rate limit shield
+                await asyncio.sleep(1.6)
         except Exception as e: self.log_err(ctx, e)
 
     @commands.command()

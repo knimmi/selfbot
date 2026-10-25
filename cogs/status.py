@@ -10,11 +10,6 @@ class StatusCommands(commands.Cog):
 
     def cog_unload(self):
         self.rotator_task.cancel()
-        
-    def is_valid_image(self, url: str) -> bool:
-        if not url: return True
-        valid_exts = [".png", ".jpg", ".jpeg", ".gif", ".webp"]
-        return any(ext in url.lower() for ext in valid_exts) or "discordapp.com/attachments" in url or "imgur.com" in url
 
     @tasks.loop(seconds=10)
     async def rotator_task(self):
@@ -54,56 +49,44 @@ class StatusCommands(commands.Cog):
         await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Status Rotator stopped.**")
 
     @commands.command()
-    async def stream(self, ctx, title: str, img_url: str = None):
+    async def stream(self, ctx, *, title: str):
         try: await ctx.message.delete()
         except: pass
-        if not self.is_valid_image(img_url):
-            return await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **Invalid Image:** URL must be a direct link (.png/.jpg) or a Discord Attachment.")
         try:
             act = discord.Streaming(name=title, url="https://twitch.tv/twitch")
-            if img_url: act.large_image_url = img_url
             await self.bot.change_presence(activity=act)
             await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Stream Status Set:** `{title}`")
         except Exception as e:
             if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[{ctx.command.name}] {e}")
 
     @commands.command()
-    async def play(self, ctx, title: str, img_url: str = None):
+    async def play(self, ctx, *, title: str):
         try: await ctx.message.delete()
         except: pass
-        if not self.is_valid_image(img_url):
-            return await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **Invalid Image:** URL must be a direct link (.png/.jpg) or a Discord Attachment.")
         try:
             act = discord.Activity(type=discord.ActivityType.playing, name=title)
-            if img_url: act.large_image_url = img_url
             await self.bot.change_presence(activity=act)
             await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Playing Status Set:** `{title}`")
         except Exception as e:
             if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[{ctx.command.name}] {e}")
 
     @commands.command(aliases=["watch"])
-    async def watching(self, ctx, title: str, img_url: str = None):
+    async def watching(self, ctx, *, title: str):
         try: await ctx.message.delete()
         except: pass
-        if not self.is_valid_image(img_url):
-            return await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **Invalid Image:** URL must be a direct link (.png/.jpg) or a Discord Attachment.")
         try:
             act = discord.Activity(type=discord.ActivityType.watching, name=title)
-            if img_url: act.large_image_url = img_url
             await self.bot.change_presence(activity=act)
             await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Watching Status Set:** `{title}`")
         except Exception as e:
             if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[{ctx.command.name}] {e}")
 
     @commands.command(aliases=["listen"])
-    async def listening(self, ctx, title: str, img_url: str = None):
+    async def listening(self, ctx, *, title: str):
         try: await ctx.message.delete()
         except: pass
-        if not self.is_valid_image(img_url):
-            return await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **Invalid Image:** URL must be a direct link (.png/.jpg) or a Discord Attachment.")
         try:
             act = discord.Activity(type=discord.ActivityType.listening, name=title)
-            if img_url: act.large_image_url = img_url
             await self.bot.change_presence(activity=act)
             await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Listening Status Set:** `{title}`")
         except Exception as e:

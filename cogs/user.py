@@ -50,13 +50,20 @@ class User(commands.Cog):
         except Exception as e: self.log_err(ctx, e)
 
     @commands.command()
-    async def close(self, ctx, channel: discord.DMChannel = None):
+    async def close(self, ctx, channel_id: int = None):
         try: await ctx.message.delete()
         except: pass
-        ch = channel or ctx.channel
+        
+        target_id = channel_id or ctx.channel.id
+        ch = self.bot.get_channel(target_id)
+        
         if isinstance(ch, discord.DMChannel):
-            try: await ch.close()
+            try: 
+                await ch.close()
+                await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Closed DM.**")
             except Exception as e: self.log_err(ctx, e)
+        else:
+            await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **Not a DM channel.**")
 
     @commands.command()
     async def presence(self, ctx, state: str):
@@ -112,16 +119,14 @@ class User(commands.Cog):
                     if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[leaveallgroups] Failed: {e}")
 
     @commands.command()
-    async def setnick(self, ctx, srv_id: int = None, *, nickname: str):
+    async def setnick(self, ctx, *, nickname: str):
         try: await ctx.message.delete()
         except: pass
-        guild = self.bot.get_guild(srv_id) if srv_id else ctx.guild
-        member = guild.get_member(self.bot.user.id)
-        if member:
-            try:
-                await member.edit(nick=nickname)
-                await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Nickname changed in {guild.name} to:** `{nickname}`")
-            except Exception as e: self.log_err(ctx, e)
+        if not ctx.guild: return
+        try:
+            await ctx.guild.me.edit(nick=nickname)
+            await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Nickname changed in {ctx.guild.name} to:** `{nickname}`")
+        except Exception as e: self.log_err(ctx, e)
 
     @commands.command()
     async def setbio(self, ctx, *, bio: str):
