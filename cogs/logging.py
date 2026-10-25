@@ -31,7 +31,6 @@ class Logging(commands.Cog):
             except: pass
 
     async def route_stalk(self, target_id_1, target_id_2, embed):
-        """Routes specific user/channel logs to the active Stalk channels."""
         stalk_cfg = self.bot.config.get("stalk", {})
         
         if str(target_id_1) in stalk_cfg:
@@ -115,7 +114,20 @@ class Logging(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        embed = discord.Embed(title=f"{self.bot.custom_emojis.get('log_session', '')} Session Online", description="Bot successfully connected to Gateway.", color=0x00ff00)
+        embed = discord.Embed(
+            title=f"{self.bot.custom_emojis.get('log_session', '✅')} BallzBot V2 Online",
+            description="Bot successfully connected to Gateway.",
+            color=0x00ff00
+        )
+        embed.add_field(name="Account Name", value=f"`{self.bot.user.name}`", inline=True)
+        embed.add_field(name="Prefix", value=f"`{self.bot.command_prefix}`", inline=True)
+        embed.add_field(name="Version", value="`V2.0`", inline=True)
+        embed.add_field(name="Friends", value=f"`{len(self.bot.user.friends)}`", inline=True)
+        embed.add_field(name="Servers", value=f"`{len(self.bot.guilds)}`", inline=True)
+        
+        if self.bot.user.display_avatar:
+            embed.set_thumbnail(url=self.bot.user.display_avatar.url)
+            
         await self.send_log("sessions", embed)
 
     @commands.Cog.listener()

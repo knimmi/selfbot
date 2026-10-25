@@ -81,20 +81,31 @@ raj.config = config
 raj.custom_emojis = custom_icons
 raj.start_time = datetime.now(timezone.utc)
 raj.commands_executed = 0
-raj.bot_logger = bot_logger  # Attach logger to bot instance
+raj.bot_logger = bot_logger 
 raj.remove_command("help")
 
-def check_risk(ctx) -> bool:
-    if not raj.config.get("risk_mode", False):
+# --- GLOBAL RATE LIMITER (Protect Account from Spam Bans) ---
+# Allows 1 command every 1.5 seconds per user (you).
+raj._global_cooldown = commands.CooldownMapping.from_cooldown(1, 1.5, commands.BucketType.user)
+
+@raj.check
+async def global_cooldown_check(ctx):
+    bucket = raj._global_cooldown.get_bucket(ctx.message)
+    retry_after = bucket.update_rate_limit()
+    if retry_after:
+        raj.bot_logger.warning(f"Rate Limit Shield: Dropped command '{ctx.message.content}' (Wait {retry_after:.2f}s)")
+        return False
+
+    if not raj.config.get("risk_mode", False) and ctx.command and ctx.command.name in ["spam", "clear", "dmall", "massdmfriends", "abuser"]:
         err = raj.custom_emojis.get("error", "")
         raj.loop.create_task(
             ctx.send(f"{err} **Command Blocked:** Risk Mode is currently **Disabled**. Enable it with `{raj.command_prefix}risk`.")
         )
         raj.bot_logger.warning(f"Blocked risky command: {ctx.message.content}")
         return False
+        
     return True
-
-raj.check_risk = check_risk
+# ------------------------------------------------------------
 
 @raj.event
 async def on_ready():
@@ -118,7 +129,6 @@ async def setup_hook():
 @raj.event
 async def on_command_completion(ctx):
     raj.commands_executed += 1
-    # Logs every successfully executed command
     loc = f"#{ctx.channel.name}" if hasattr(ctx.channel, 'name') else "DM"
     raj.bot_logger.info(f"CMD Executed | {loc} | {ctx.message.content}")
 
@@ -126,7 +136,11 @@ async def on_command_completion(ctx):
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
         return
-    # Logs command errors cleanly
+        
+    if isinstance(error, commands.CommandOnCooldown):
+        raj.bot_logger.warning(f"Command Cooldown Hit: {error}")
+        return
+        
     raj.bot_logger.error(f"CMD Error | {ctx.message.content} | {error}")
     
     if isinstance(error, commands.MissingRequiredArgument):

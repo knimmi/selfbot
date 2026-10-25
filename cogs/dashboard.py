@@ -60,7 +60,6 @@ LOGIN_HTML = f"""
 </html>
 """
 
-# Unified Layout Template
 LAYOUT_HTML = f"""
 <!DOCTYPE html>
 <html>
@@ -113,7 +112,6 @@ LAYOUT_HTML = f"""
 </html>
 """
 
-# Views Data
 VIEW_DASHBOARD = """
 <div class="flex justify-between items-center mb-8">
     <h2 class="text-3xl font-bold text-white">System Overview</h2>
@@ -125,7 +123,7 @@ VIEW_DASHBOARD = """
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
     <div class="bg-discord-sidebar p-6 rounded-lg border border-gray-800 shadow-md">
         <div class="flex justify-between items-center mb-4"><h3 class="text-gray-400 font-semibold text-sm uppercase tracking-wider">Uptime</h3><i class="fa-solid fa-clock text-discord-blurple text-xl"></i></div>
-        <p class="text-2xl font-bold text-white">{{ uptime }}</p>
+        <p class="text-2xl font-bold text-white" id="uptime-display">Loading...</p>
     </div>
     <div class="bg-discord-sidebar p-6 rounded-lg border border-gray-800 shadow-md">
         <div class="flex justify-between items-center mb-4"><h3 class="text-gray-400 font-semibold text-sm uppercase tracking-wider">Servers</h3><i class="fa-solid fa-server text-indigo-400 text-xl"></i></div>
@@ -153,6 +151,20 @@ VIEW_DASHBOARD = """
         </div>
     </div>
 </div>
+<script>
+    function updateUptime() {
+        const start = {{ start_timestamp }};
+        const now = Date.now() / 1000;
+        let diff = Math.floor(now - start);
+        let d = Math.floor(diff / 86400); diff %= 86400;
+        let h = Math.floor(diff / 3600); diff %= 3600;
+        let m = Math.floor(diff / 60);
+        let s = diff % 60;
+        document.getElementById('uptime-display').innerText = d + 'd ' + h + 'h ' + m + 'm ' + s + 's';
+    }
+    setInterval(updateUptime, 1000);
+    updateUptime();
+</script>
 """
 
 VIEW_LOGS = """
@@ -223,12 +235,10 @@ def render_layout(page, content):
 def index():
     if not session.get('logged_in'): return redirect('/login')
         
-    delta = datetime.now(timezone.utc) - bot_instance.start_time
-    hours, remainder = divmod(delta.seconds, 3600)
-    minutes, seconds = divmod(remainder, 60)
+    start_ts = bot_instance.start_time.timestamp()
     
     content = render_template_string(VIEW_DASHBOARD, 
-        uptime=f"{delta.days}d {hours}h {minutes}m",
+        start_timestamp=start_ts,
         guild_count=len(bot_instance.guilds),
         commands_executed=bot_instance.commands_executed,
         risk_mode=bot_instance.config.get("risk_mode", False),
@@ -257,7 +267,6 @@ def config_panel():
     
     success = False
     if request.method == 'POST':
-        # Update Config
         bot_instance.config["prefix"] = request.form.get("prefix", ".")
         bot_instance.command_prefix = bot_instance.config["prefix"]
         bot_instance.config["Qr"] = request.form.get("qr", "")
@@ -268,14 +277,13 @@ def config_panel():
         with open("config.json", "w", encoding="utf-8") as f:
             json.dump(bot_instance.config, f, indent=4)
             
-        # Update Emojis Safely
         try:
             new_emojis = json.loads(request.form.get("emojis"))
             bot_instance.custom_emojis.update(new_emojis)
             with open("emojis.json", "w", encoding="utf-8") as f:
                 json.dump(bot_instance.custom_emojis, f, indent=4)
         except Exception:
-            pass # Invalid JSON ignored
+            pass
             
         success = True
 
