@@ -1,7 +1,6 @@
 import discord
 from discord.ext import commands
 import aiohttp
-import requests
 
 class Checker(commands.Cog):
     def __init__(self, bot):
@@ -23,7 +22,7 @@ class Checker(commands.Cog):
                     async with session.get(url) as resp:
                         if resp.status in [200, 204, 201]:
                             data = await resp.json()
-                            status = "ALREADY CLAIMED" if data["uses"] == data["max_uses"] else "VALID"
+                            status = "ALREADY CLAIMED" if data.get("uses") == data.get("max_uses") else "VALID"
                             await ctx.send(f'**Code:** {code}\n**Status:** {status}')
                         elif resp.status == 429:
                             await ctx.send('**RARE LIMITED** (Rate Limit)')
@@ -36,12 +35,13 @@ class Checker(commands.Cog):
         try: await ctx.message.delete()
         except: pass
         try:
-            r = requests.get("https://discord.com/api/v10/users/@me", headers={'Authorization': token_str}, timeout=5)
-            if r.status_code == 200:
-                user = r.json()
-                await ctx.send(f'### Token Checked\n- **Username:** `{user["username"]}`\n- **ID:** `{user["id"]}`\n- **Email:** `{user.get("email")}`\n- **Verified?** `{user.get("verified")}`')
-            else:
-                await ctx.send(f"{self.bot.custom_emojis.get('check', '')} Invalid or locked token")
+            async with aiohttp.ClientSession() as session:
+                async with session.get("https://discord.com/api/v10/users/@me", headers={'Authorization': token_str}, timeout=5) as r:
+                    if r.status == 200:
+                        user = await r.json()
+                        await ctx.send(f'### Token Checked\n- **Username:** `{user.get("username")}`\n- **ID:** `{user.get("id")}`\n- **Email:** `{user.get("email")}`\n- **Verified?** `{user.get("verified")}`')
+                    else:
+                        await ctx.send(f"{self.bot.custom_emojis.get('check', '')} Invalid or locked token")
         except Exception as e:
             self.log_err(ctx, e)
             await ctx.send(f"{self.bot.custom_emojis.get('error', '')} Token Check Failed.")

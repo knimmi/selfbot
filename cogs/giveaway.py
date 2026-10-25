@@ -34,8 +34,10 @@ class GiveawayJoiner(commands.Cog):
             json.dump(self.bot.config, f, indent=4)
 
     async def send_webhook(self, title, description, color):
-        webhook_url = self.bot.config.get("gw_webhook")
+        # Pulls directly from the unified autolog webhooks dictionary
+        webhook_url = self.bot.config.get("webhooks", {}).get("giveaways")
         if not webhook_url: return
+        
         embed = {"title": title, "description": description, "color": color, "timestamp": datetime.utcnow().isoformat()}
         try:
             async with aiohttp.ClientSession() as session:
@@ -85,12 +87,25 @@ class GiveawayJoiner(commands.Cog):
         if message.id in self.history: return
         self.history.add(message.id)
 
+        # Lightweight Prize Extractor
+        prize = "Unknown Prize"
+        if message.embeds:
+            for emb in message.embeds:
+                if emb.title and "giveaway" not in emb.title.lower():
+                    prize = emb.title[:60]
+                    break
+                elif emb.description:
+                    prize = emb.description.split('\n')[0][:60]
+                    break
+
         cfg["stats"]["detected"] = cfg["stats"].get("detected", 0) + 1
         self.save_config()
 
+        server_name = message.guild.name if message.guild else 'DM'
+
         await self.send_webhook(
             "🔍 Giveaway Detected",
-            f"**Bot:** {message.author.mention}\n**Server:** {message.guild.name if message.guild else 'DM'}\n**Channel:** <#{message.channel.id}>\n[Jump to Message]({message.jump_url})",
+            f"**Detected Bot:** {message.author.mention}\n**Detected Prize:** `{prize}`\n**Detected Server:** {server_name}\n**Link:** [Jump to Message]({message.jump_url})",
             0xFFA500 
         )
 
@@ -132,13 +147,12 @@ class GiveawayJoiner(commands.Cog):
             
             await self.send_webhook(
                 "🎉 Giveaway Joined",
-                f"**Bot:** {message.author.mention}\n**Server:** {message.guild.name if message.guild else 'DM'}\n**Channel:** <#{message.channel.id}>\n[Jump to Message]({message.jump_url})",
+                f"**Detected Bot:** {message.author.mention}\n**Detected Prize:** `{prize}`\n**Detected Server:** {server_name}\n**Link:** [Jump to Message]({message.jump_url})",
                 0x00FF00 
             )
             
-            loc = message.guild.name if message.guild else 'DM'
             if hasattr(self.bot, 'bot_logger'): 
-                self.bot.bot_logger.info(f"[GW Joiner] Successfully joined giveaway {message.id} in {loc}")
+                self.bot.bot_logger.info(f"[GW Joiner] Successfully joined giveaway {message.id} in {server_name}")
 
 async def setup(bot):
     await bot.add_cog(GiveawayJoiner(bot))

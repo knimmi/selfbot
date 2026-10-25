@@ -157,7 +157,8 @@ class General(commands.Cog):
 {e.get('auto', '')} **Stop Auto Message** :- `.stopam [chnl_id]`
 {e.get('auto', '')} **Auto Slash** :- `.as_ <bot_id> <chnl_id> <cmd> <time> [key=val]`
 {e.get('auto', '')} **Stop Auto Slash** :- `.asstop [chnl_id]`
-{e.get('auto', '')} **Giveaway Joiner** :- `.gw [toggle/status]`"""
+{e.get('auto', '')} **Giveaway Joiner** :- `.gw [toggle/status]`
+{e.get('auto', '')} **Nitro Sniper** :- `.sniper`"""
             elif "afk" in cat:
                 desc = f"""{e.get('crown', '')} **Afk Section** {e.get('crown', '')}
 {e.get('afk', '')} **Toggle AFK** :- `.afk [msg]`

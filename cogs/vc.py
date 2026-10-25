@@ -4,12 +4,48 @@ from discord.ext import commands
 class Voice(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.is_streaming = False
+        self.is_camera_on = False
 
     def log_err(self, ctx, e):
         if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[{ctx.command.name}] {e}")
 
     async def check_permissions(self, ctx, member: discord.Member):
         return ctx.author.guild_permissions.move_members
+
+    async def update_voice_state(self, ctx, stream=None, camera=None):
+        if not getattr(ctx.author, 'voice', None) or not ctx.author.voice.channel: 
+            return False
+        
+        if stream is not None: self.is_streaming = stream
+        if camera is not None: self.is_camera_on = camera
+        
+        payload = {
+            "op": 4,
+            "d": {
+                "guild_id": ctx.guild.id,
+                "channel_id": ctx.author.voice.channel.id,
+                "self_mute": ctx.author.voice.self_mute,
+                "self_deaf": ctx.author.voice.self_deaf,
+                "self_video": self.is_camera_on
+            }
+        }
+        await self.bot.ws.send_as_json(payload)
+
+        # Discord requires Opcode 18 to active the "Live" streaming badge
+        if stream is not None and self.is_streaming:
+            stream_payload = {
+                "op": 18,
+                "d": {
+                    "type": "guild",
+                    "guild_id": ctx.guild.id,
+                    "channel_id": ctx.author.voice.channel.id,
+                    "preferred_region": None
+                }
+            }
+            await self.bot.ws.send_as_json(stream_payload)
+            
+        return True
 
     @commands.command(name='vckick', aliases=['vkick'])
     async def vckick(self, ctx, user: discord.Member):
@@ -77,7 +113,6 @@ class Voice(commands.Cog):
         try: await ctx.message.delete()
         except: pass
         try:
-            # Removed str() wrappers to send raw integer snowflakes
             await self.bot.ws.send_as_json({
                 "op": 4, 
                 "d": {
@@ -104,6 +139,8 @@ class Voice(commands.Cog):
                     "self_deaf": False
                 }
             })
+            self.is_streaming = False
+            self.is_camera_on = False
             await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Left VC**")
         except Exception as e: self.log_err(ctx, e)
 
@@ -119,42 +156,21 @@ class Voice(commands.Cog):
     async def vccam(self, ctx):
         try: await ctx.message.delete()
         except: pass
-        if not getattr(ctx.author, 'voice', None) or not ctx.author.voice.channel: 
-            return await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **You need to be in a VC first!**")
-        try:
-            await self.bot.ws.send_as_json({
-                "op": 4, 
-                "d": {
-                    "guild_id": ctx.guild.id if ctx.guild else None, 
-                    "channel_id": ctx.author.voice.channel.id, 
-                    "self_mute": ctx.author.voice.self_mute, 
-                    "self_deaf": ctx.author.voice.self_deaf, 
-                    "self_video": True
-                }
-            })
-            await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Spoofing Camera in VC!**")
-        except Exception as e: self.log_err(ctx, e)
+        success = await self.update_voice_state(ctx, camera=not self.is_camera_on)
+        if success:
+            await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Camera {'enabled' if self.is_camera_on else 'disabled'}!**")
+        else:
+            await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **You need to be in a VC first!**")
 
     @commands.command()
     async def vcstream(self, ctx):
         try: await ctx.message.delete()
         except: pass
-        if not getattr(ctx.author, 'voice', None) or not ctx.author.voice.channel: 
-            return await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **You need to be in a VC first!**")
-        try:
-            await self.bot.ws.send_as_json({
-                "op": 4, 
-                "d": {
-                    "guild_id": ctx.guild.id if ctx.guild else None, 
-                    "channel_id": ctx.author.voice.channel.id, 
-                    "self_mute": ctx.author.voice.self_mute, 
-                    "self_deaf": ctx.author.voice.self_deaf, 
-                    "self_stream": True,
-                    "self_video": False
-                }
-            })
-            await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Spoofing Stream (Live) in VC!**")
-        except Exception as e: self.log_err(ctx, e)
+        success = await self.update_voice_state(ctx, stream=not self.is_streaming)
+        if success:
+            await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Stream {'started' if self.is_streaming else 'stopped'}!**")
+        else:
+            await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **You need to be in a VC first!**")
 
 async def setup(bot):
     await bot.add_cog(Voice(bot))
