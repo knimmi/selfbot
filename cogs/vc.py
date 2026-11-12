@@ -1,176 +1,265 @@
+import asyncio
 import discord
 from discord.ext import commands
 
-class Voice(commands.Cog):
-    def __init__(self, bot):
+
+class VC(commands.Cog, name="VC"):
+    """Global Voice Channel Manager: Join, Leave, 24/7 Stay, Mute/Deaf/Cam/Stream from ANY server or DM."""
+
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.is_streaming = False
-        self.is_camera_on = False
+        # Guild ID -> {"channel_id": int, "mute": bool, "deaf": bool, "video": bool}
+        self.stay_247: dict[int, dict] = {}
+        self.reconnect_task: asyncio.Task | None = None
 
-    def log_err(self, ctx, e):
-        if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[{ctx.command.name}] {e}")
+    async def cog_load(self):
+        self.reconnect_task = asyncio.create_task(self._keep_alive_loop())
 
-    async def check_permissions(self, ctx, member: discord.Member):
-        return ctx.author.guild_permissions.move_members
+    def cog_unload(self):
+        if self.reconnect_task:
+            self.reconnect_task.cancel()
 
-    async def update_voice_state(self, ctx, stream=None, camera=None):
-        if not getattr(ctx.author, 'voice', None) or not ctx.author.voice.channel: 
-            return False
-        
-        if stream is not None: self.is_streaming = stream
-        if camera is not None: self.is_camera_on = camera
-        
-        payload = {
-            "op": 4,
-            "d": {
-                "guild_id": ctx.guild.id,
-                "channel_id": ctx.author.voice.channel.id,
-                "self_mute": ctx.author.voice.self_mute,
-                "self_deaf": ctx.author.voice.self_deaf,
-                "self_video": self.is_camera_on
-            }
+    async def _resolve_voice_channel(
+        self, ctx: commands.Context, query: str | None = None
+    ) -> discord.VoiceChannel | discord.StageChannel | None:
+        """Resolve a Voice/Stage channel globally across ALL servers (works from DMs or other servers)."""
+        if not query:
+            if ctx.guild and isinstance(ctx.author, discord.Member) and ctx.author.voice:
+                return ctx.author.voice.channel
+            # Check if the user is in a voice channel in ANY mutual guild
+            for g in self.bot.guilds:
+                member = g.get_member(self.bot.user.id)
+                if member and member.voice and member.voice.channel:
+                    return member.voice.channel
+            return None
+
+        cleaned = query.strip().lstrip("<#").rstrip(">")
+
+        # 1. Try numeric Channel ID globally
+        if cleaned.isdigit():
+            cid = int(cleaned)
+            ch = self.bot.get_channel(cid)
+            if ch is None:
+                try:
+                    ch = await self.bot.fetch_channel(cid)
+                except Exception:
+                    ch = None
+            if isinstance(ch, (discord.VoiceChannel, discord.StageChannel)):
+                return ch
+
+        # 2. Try matching by name in current guild first
+        q_lower = query.lower().strip()
+        if ctx.guild:
+            for ch in ctx.guild.voice_channels + ctx.guild.stage_channels:
+                if ch.name.lower() == q_lower or q_lower in ch.name.lower():
+                    return ch
+
+        # 3. Search across ALL joined servers globally
+        for g in self.bot.guilds:
+            for ch in g.voice_channels + g.stage_channels:
+                if ch.name.lower() == q_lower:
+                    return ch
+        for g in self.bot.guilds:
+            for ch in g.voice_channels + g.stage_channels:
+                if q_lower in ch.name.lower():
+                    return ch
+
+        return None
+
+    async def _connect_or_state(
+        self,
+        channel: discord.VoiceChannel | discord.StageChannel,
+        self_mute: bool = False,
+        self_deaf: bool = False,
+        self_video: bool = False,
+    ):
+        """Connect to a voice channel from anywhere using gateway voice state + client connection."""
+        guild = channel.guild
+        try:
+            await guild.change_voice_state(
+                channel=channel,
+                self_mute=self_mute,
+                self_deaf=self_deaf,
+                self_video=self_video,
+            )
+        except Exception:
+            # Fallback to VoiceClient.connect if change_voice_state isn't directly supported
+            vc = guild.voice_client
+            if vc:
+                await vc.move_to(channel)
+            else:
+                await channel.connect(reconnect=True, self_mute=self_mute, self_deaf=self_deaf)
+
+    async def _keep_alive_loop(self):
+        await self.bot.wait_until_ready()
+        while not self.bot.is_closed():
+            try:
+                for guild_id, cfg in list(self.stay_247.items()):
+                    guild = self.bot.get_guild(guild_id)
+                    if not guild:
+                        continue
+                    me = guild.get_member(self.bot.user.id)
+                    in_target = me and me.voice and me.voice.channel and me.voice.channel.id == cfg["channel_id"]
+                    if not in_target:
+                        ch = self.bot.get_channel(cfg["channel_id"])
+                        if isinstance(ch, (discord.VoiceChannel, discord.StageChannel)):
+                            await self._connect_or_state(
+                                ch,
+                                self_mute=cfg["mute"],
+                                self_deaf=cfg["deaf"],
+                                self_video=cfg["video"],
+                            )
+            except Exception:
+                pass
+            await asyncio.sleep(15)
+
+    @commands.command(
+        name="joinvc",
+        aliases=["vcjoin", "jvc", "connect"],
+        help="Join any voice channel by ID or name from ANY server or DM. Usage: .joinvc <id/name> [mute] [deaf]",
+    )
+    async def joinvc(
+        self,
+        ctx: commands.Context,
+        channel_query: str = None,
+        mute: bool = False,
+        deaf: bool = False,
+    ):
+        target = await self._resolve_voice_channel(ctx, channel_query)
+        if not target:
+            return await ctx.send(
+                "`[VC]` Could not find that voice channel. Pass a **Voice Channel ID** or exact name.",
+                delete_after=7,
+            )
+
+        await self._connect_or_state(target, self_mute=mute, self_deaf=deaf)
+        await ctx.send(
+            f"`[VC]` Joined **{target.name}** in **{target.guild.name}** (`{target.id}`) [Mute: `{mute}` | Deaf: `{deaf}`]",
+            delete_after=8,
+        )
+
+    @commands.command(
+        name="247vc",
+        aliases=["vc247", "stayvc"],
+        help="Toggle 24/7 auto-reconnect for a voice channel (works from any server or DM).",
+    )
+    async def vc247(
+        self,
+        ctx: commands.Context,
+        channel_query: str = None,
+        mute: bool = True,
+        deaf: bool = True,
+    ):
+        target = await self._resolve_voice_channel(ctx, channel_query)
+        if not target:
+            return await ctx.send("`[VC]` Specify a valid Voice Channel ID or name.", delete_after=7)
+
+        if target.guild.id in self.stay_247:
+            del self.stay_247[target.guild.id]
+            return await ctx.send(f"`[VC]` Disabled 24/7 mode for **{target.guild.name}**.", delete_after=7)
+
+        self.stay_247[target.guild.id] = {
+            "channel_id": target.id,
+            "mute": mute,
+            "deaf": deaf,
+            "video": False,
         }
-        await self.bot.ws.send_as_json(payload)
+        await self._connect_or_state(target, self_mute=mute, self_deaf=deaf)
+        await ctx.send(
+            f"`[VC]` Enabled 24/7 VC stay in **{target.name}** (**{target.guild.name}**).",
+            delete_after=8,
+        )
 
-        # Discord requires Opcode 18 to active the "Live" streaming badge
-        if stream is not None and self.is_streaming:
-            stream_payload = {
-                "op": 18,
-                "d": {
-                    "type": "guild",
-                    "guild_id": ctx.guild.id,
-                    "channel_id": ctx.author.voice.channel.id,
-                    "preferred_region": None
-                }
-            }
-            await self.bot.ws.send_as_json(stream_payload)
-            
-        return True
+    @commands.command(
+        name="leavevc",
+        aliases=["vcleave", "lvc", "disconnect"],
+        help="Disconnect from voice in the current server, a specified guild ID, or all servers if run in DMs.",
+    )
+    async def leavevc(self, ctx: commands.Context, guild_id: int = None):
+        target_guilds = []
+        if guild_id:
+            g = self.bot.get_guild(guild_id)
+            if g:
+                target_guilds.append(g)
+        elif ctx.guild:
+            me = ctx.guild.get_member(self.bot.user.id)
+            if me and me.voice and me.voice.channel:
+                target_guilds.append(ctx.guild)
 
-    @commands.command(name='vckick', aliases=['vkick'])
-    async def vckick(self, ctx, user: discord.Member):
-        try: await ctx.message.delete()
-        except: pass
-        if await self.check_permissions(ctx, user) and user.voice:
-            try: await user.move_to(None)
-            except Exception as e: self.log_err(ctx, e)
+        # If run in DM or not in VC in the current server, find all guilds where the bot is in voice
+        if not target_guilds:
+            for g in self.bot.guilds:
+                me = g.get_member(self.bot.user.id)
+                if (me and me.voice and me.voice.channel) or g.voice_client:
+                    target_guilds.append(g)
 
-    @commands.command(name='vcmoveall', aliases=['moveall'])
-    async def vcmoveall(self, ctx, channel1_id: int, channel2_id: int):
-        try: await ctx.message.delete()
-        except: pass
-        ch1 = self.bot.get_channel(channel1_id)
-        ch2 = self.bot.get_channel(channel2_id)
-        if isinstance(ch1, discord.VoiceChannel) and isinstance(ch2, discord.VoiceChannel):
-            for member in ch1.members:
-                if await self.check_permissions(ctx, member):
-                    try: await member.move_to(ch2)
-                    except Exception as e: 
-                        if hasattr(self.bot, 'bot_logger'): self.bot.bot_logger.error(f"[vcmoveall] Failed on {member}: {e}")
+        if not target_guilds:
+            return await ctx.send("`[VC]` Not currently connected to any voice channels.", delete_after=6)
 
-    @commands.command(name='vcmute', aliases=['stfu'])
-    async def vcmute(self, ctx, user: discord.Member):
-        try: await ctx.message.delete()
-        except: pass
-        if await self.check_permissions(ctx, user) and user.voice:
-            try: await user.edit(mute=True)
-            except Exception as e: self.log_err(ctx, e)
+        left_names = []
+        for g in target_guilds:
+            self.stay_247.pop(g.id, None)
+            try:
+                if g.voice_client:
+                    await g.voice_client.disconnect(force=True)
+                await g.change_voice_state(channel=None)
+                left_names.append(g.name)
+            except Exception:
+                pass
 
-    @commands.command()
-    async def vcunmute(self, ctx, member: discord.Member):
-        try: await ctx.message.delete()
-        except: pass
-        if ctx.author.voice and member.voice and member.voice.channel == ctx.author.voice.channel:
-            try: await member.edit(mute=False)
-            except Exception as e: self.log_err(ctx, e)
+        await ctx.send(f"`[VC]` Disconnected from voice in: **{', '.join(left_names)}**", delete_after=7)
 
-    @commands.command()
-    async def vcdeafen(self, ctx, member: discord.Member):
-        try: await ctx.message.delete()
-        except: pass
-        if ctx.author.voice and member.voice and member.voice.channel == ctx.author.voice.channel:
-            try: await member.edit(deafen=True)
-            except Exception as e: self.log_err(ctx, e)
+    @commands.command(name="vcmute", help="Toggle self-mute in your active voice channel.")
+    async def vcmute(self, ctx: commands.Context):
+        target = await self._resolve_voice_channel(ctx, None)
+        if not target:
+            return await ctx.send("`[VC]` You are not in a voice channel.", delete_after=6)
+        me = target.guild.get_member(self.bot.user.id)
+        new_mute = not (me.voice.self_mute if me and me.voice else False)
+        deaf = me.voice.self_deaf if me and me.voice else False
+        video = me.voice.self_video if me and me.voice else False
+        await self._connect_or_state(target, self_mute=new_mute, self_deaf=deaf, self_video=video)
+        await ctx.send(f"`[VC]` Self-Mute set to **{new_mute}** in **{target.name}**.", delete_after=6)
 
-    @commands.command()
-    async def vcundeafen(self, ctx, member: discord.Member):
-        try: await ctx.message.delete()
-        except: pass
-        if ctx.author.voice and member.voice and member.voice.channel == ctx.author.voice.channel:
-            try: await member.edit(deafen=False)
-            except Exception as e: self.log_err(ctx, e)
+    @commands.command(name="vcdeaf", help="Toggle self-deafen in your active voice channel.")
+    async def vcdeaf(self, ctx: commands.Context):
+        target = await self._resolve_voice_channel(ctx, None)
+        if not target:
+            return await ctx.send("`[VC]` You are not in a voice channel.", delete_after=6)
+        me = target.guild.get_member(self.bot.user.id)
+        mute = me.voice.self_mute if me and me.voice else False
+        new_deaf = not (me.voice.self_deaf if me and me.voice else False)
+        video = me.voice.self_video if me and me.voice else False
+        await self._connect_or_state(target, self_mute=mute, self_deaf=new_deaf, self_video=video)
+        await ctx.send(f"`[VC]` Self-Deaf set to **{new_deaf}** in **{target.name}**.", delete_after=6)
 
-    @commands.command()
-    async def vcmove(self, ctx, member: discord.Member, channel: discord.VoiceChannel):
-        try: await ctx.message.delete()
-        except: pass
-        if ctx.author.voice and member.voice and member.voice.channel == ctx.author.voice.channel:
-            try: await member.move_to(channel)
-            except Exception as e: self.log_err(ctx, e)
+    @commands.command(name="vccam", aliases=["fakecam"], help="Toggle fake camera indicator in your active voice channel.")
+    async def vccam(self, ctx: commands.Context):
+        target = await self._resolve_voice_channel(ctx, None)
+        if not target:
+            return await ctx.send("`[VC]` You are not in a voice channel.", delete_after=6)
+        me = target.guild.get_member(self.bot.user.id)
+        mute = me.voice.self_mute if me and me.voice else False
+        deaf = me.voice.self_deaf if me and me.voice else False
+        new_video = not (me.voice.self_video if me and me.voice else False)
+        await self._connect_or_state(target, self_mute=mute, self_deaf=deaf, self_video=new_video)
+        await ctx.send(f"`[VC]` Fake Camera set to **{new_video}** in **{target.name}**.", delete_after=6)
 
-    @commands.command()
-    async def vcjoin(self, ctx, channel: discord.VoiceChannel):
-        try: await ctx.message.delete()
-        except: pass
-        try:
-            await self.bot.ws.send_as_json({
-                "op": 4, 
-                "d": {
-                    "guild_id": ctx.guild.id if ctx.guild else None, 
-                    "channel_id": channel.id, 
-                    "self_mute": False, 
-                    "self_deaf": False
-                }
-            })
-            await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Joined** {channel.mention}")
-        except Exception as e: self.log_err(ctx, e)
+    @commands.command(name="vcstatus", help="Show all voice channels your account is currently connected to.")
+    async def vcstatus(self, ctx: commands.Context):
+        active = []
+        for g in self.bot.guilds:
+            me = g.get_member(self.bot.user.id)
+            if me and me.voice and me.voice.channel:
+                ch = me.voice.channel
+                active.append(
+                    f"• {g.name} -> #{ch.name} (ID: {ch.id}) "
+                    f"[Mute: {me.voice.self_mute} | Deaf: {me.voice.self_deaf} | Cam: {me.voice.self_video}]"
+                )
+        if not active:
+            return await ctx.send("`[VC]` Not currently in any voice channel.", delete_after=6)
+        await ctx.send("```ini\n[Active Voice Connections]\n" + "\n".join(active) + "\n```")
 
-    @commands.command()
-    async def vcleave(self, ctx):
-        try: await ctx.message.delete()
-        except: pass
-        try:
-            await self.bot.ws.send_as_json({
-                "op": 4, 
-                "d": {
-                    "guild_id": ctx.guild.id if ctx.guild else None, 
-                    "channel_id": None, 
-                    "self_mute": False, 
-                    "self_deaf": False
-                }
-            })
-            self.is_streaming = False
-            self.is_camera_on = False
-            await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Left VC**")
-        except Exception as e: self.log_err(ctx, e)
 
-    @commands.command()
-    async def vclimit(self, ctx, limit: int, channel: discord.VoiceChannel = None):
-        try: await ctx.message.delete()
-        except: pass
-        channel = channel or ctx.author.voice.channel
-        try: await channel.edit(user_limit=limit)
-        except Exception as e: self.log_err(ctx, e)
-
-    @commands.command()
-    async def vccam(self, ctx):
-        try: await ctx.message.delete()
-        except: pass
-        success = await self.update_voice_state(ctx, camera=not self.is_camera_on)
-        if success:
-            await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Camera {'enabled' if self.is_camera_on else 'disabled'}!**")
-        else:
-            await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **You need to be in a VC first!**")
-
-    @commands.command()
-    async def vcstream(self, ctx):
-        try: await ctx.message.delete()
-        except: pass
-        success = await self.update_voice_state(ctx, stream=not self.is_streaming)
-        if success:
-            await ctx.send(f"{self.bot.custom_emojis.get('check', '')} **Stream {'started' if self.is_streaming else 'stopped'}!**")
-        else:
-            await ctx.send(f"{self.bot.custom_emojis.get('error', '')} **You need to be in a VC first!**")
-
-async def setup(bot):
-    await bot.add_cog(Voice(bot))
+async def setup(bot: commands.Bot):
+    await bot.add_cog(VC(bot))
