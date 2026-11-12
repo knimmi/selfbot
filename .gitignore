@@ -5,3 +5,4 @@ transcript*.html
 cybrary.txt
 config.json
 config.json
+.env
